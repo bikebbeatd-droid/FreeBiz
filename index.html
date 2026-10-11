@@ -1,0 +1,863 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+    <meta name="theme-color" content="#2563eb" />
+    <title>FreeBiz Tools — 100% Free Local Business Utilities</title>
+    <meta name="description" content="Beginner-friendly, mobile-first business utilities that run 100% locally in your browser. Generate custom QR codes, business bios, product descriptions, and instant receipts with zero logins, fees, or AI APIs." />
+    <meta property="og:title" content="FreeBiz Tools — 100% Free Local Business Utilities" />
+    <meta property="og:description" content="Beginner-friendly, mobile-first business utilities that run 100% locally in your browser. Generate custom QR codes, business bios, product descriptions, and instant receipts with zero logins, fees, or AI APIs." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <!-- Top Site Header -->
+    <header class="site-header">
+      <div class="container header-inner">
+        <a href="#" class="brand-mark" aria-label="FreeBiz Tools Homepage">
+          <div class="brand-icon">⚡</div>
+          <span class="brand-title">FreeBiz Tools</span>
+          <span class="brand-badge">100% Free</span>
+        </a>
+
+        <!-- Desktop Navigation Tabs -->
+        <nav class="desktop-nav" aria-label="Tool selection">
+          <button type="button" class="nav-link active" data-tab="qr">
+            <span>🔲</span> QR Codes
+          </button>
+          <button type="button" class="nav-link" data-tab="bio">
+            <span>📝</span> Business Bios
+          </button>
+          <button type="button" class="nav-link" data-tab="product">
+            <span>🏷️</span> Descriptions
+          </button>
+          <button type="button" class="nav-link" data-tab="invoice">
+            <span>🧾</span> Instant Receipts
+          </button>
+          <button type="button" class="nav-link" data-tab="guide">
+            <span>📱</span> Test on Phone
+          </button>
+        </nav>
+
+        <div class="header-actions">
+          <button type="button" id="btnHeaderTestPhone" class="btn btn-outline-primary btn-sm">
+            <span>📱</span> Test on Phone
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Privacy & Offline Guarantee Banner -->
+    <div class="privacy-banner">
+      <div class="container privacy-banner-inner">
+        <span class="privacy-item">🔒 Runs 100% locally in your browser</span>
+        <span class="privacy-item">• No sign-up or login required</span>
+        <span class="privacy-item">• No payment details</span>
+        <span class="privacy-item">• No data collected or stored</span>
+      </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <main class="container" style="flex: 1; padding-top: 1rem;">
+      <!-- Hero Intro -->
+      <section class="hero-section">
+        <h1 class="hero-title">Essential Tools for Small Businesses</h1>
+        <p class="hero-subtitle">
+          Create custom QR codes, write social bios, generate e-commerce descriptions, and issue instant receipts. Completely free, private, and fast.
+        </p>
+
+        <!-- Mobile Horizontal Tab Scroller -->
+        <div class="mobile-tab-scroller" role="tablist" aria-label="Quick mobile tools">
+          <button type="button" class="quick-tab-btn active" data-tab="qr" role="tab">
+            <span>🔲</span> QR Generator
+          </button>
+          <button type="button" class="quick-tab-btn" data-tab="bio" role="tab">
+            <span>📝</span> Bio Writer
+          </button>
+          <button type="button" class="quick-tab-btn" data-tab="product" role="tab">
+            <span>🏷️</span> Product Desc
+          </button>
+          <button type="button" class="quick-tab-btn" data-tab="invoice" role="tab">
+            <span>🧾</span> Instant Receipt
+          </button>
+          <button type="button" class="quick-tab-btn" data-tab="guide" role="tab">
+            <span>📱</span> Phone Guide
+          </button>
+        </div>
+      </section>
+
+      <!-- ===================================================================
+           TOOL 1: QR CODE GENERATOR (100% Local, Zero External / Paid API)
+           =================================================================== -->
+      <section id="qrToolView" class="tool-view active" aria-labelledby="qrToolHeading">
+        <div class="tool-card">
+          <div class="tool-header">
+            <div class="tool-title-group">
+              <div class="tool-icon-box">🔲</div>
+              <div>
+                <h2 id="qrToolHeading">QR Code Generator</h2>
+                <p>Pure browser generation • Works offline • No paid API or scan limits</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="tool-grid">
+            <!-- Left Column: Controls & Inputs -->
+            <div class="tool-inputs-col">
+              <!-- Content Type Selector -->
+              <div class="form-group">
+                <label class="form-label">QR Code Type</label>
+                <div class="segmented-control" id="qrTypeControls" role="tablist">
+                  <button type="button" class="segment-btn active" data-type="url">Website URL</button>
+                  <button type="button" class="segment-btn" data-type="phone">Phone Call</button>
+                  <button type="button" class="segment-btn" data-type="whatsapp">WhatsApp</button>
+                  <button type="button" class="segment-btn" data-type="wifi">Wi-Fi</button>
+                  <button type="button" class="segment-btn" data-type="vcard">Contact Card</button>
+                  <button type="button" class="segment-btn" data-type="text">Plain Text</button>
+                </div>
+              </div>
+
+              <!-- Type 1: Website URL -->
+              <div id="qrFieldsUrl" class="form-group">
+                <label for="qrUrlInput" class="form-label">
+                  Website or Profile Link <span class="helper">(e.g. Google Maps review, Instagram, Store)</span>
+                </label>
+                <input
+                  type="url"
+                  id="qrUrlInput"
+                  class="form-control"
+                  placeholder="https://mybusiness.com"
+                  value="https://mybusiness.com"
+                  autocomplete="off"
+                />
+              </div>
+
+              <!-- Type 2: Phone Call -->
+              <div id="qrFieldsPhone" class="form-group" style="display: none;">
+                <label for="qrPhoneInput" class="form-label">Phone Number to Call</label>
+                <input
+                  type="tel"
+                  id="qrPhoneInput"
+                  class="form-control"
+                  placeholder="+1 (555) 234-5678"
+                  value="+1 555-234-5678"
+                />
+              </div>
+
+              <!-- Type 3: WhatsApp Direct Message -->
+              <div id="qrFieldsWhatsapp" style="display: none;">
+                <div class="form-group">
+                  <label for="qrWaPhone" class="form-label">WhatsApp Number <span class="helper">(with country code, digits only)</span></label>
+                  <input
+                    type="tel"
+                    id="qrWaPhone"
+                    class="form-control"
+                    placeholder="15551234567"
+                    value="15551234567"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="qrWaMsg" class="form-label">Pre-filled Starter Message</label>
+                  <input
+                    type="text"
+                    id="qrWaMsg"
+                    class="form-control"
+                    placeholder="Hello! I would like to order."
+                    value="Hello! I would like to inquire about your services."
+                  />
+                </div>
+              </div>
+
+              <!-- Type 4: Wi-Fi Login -->
+              <div id="qrFieldsWifi" style="display: none;">
+                <div class="form-row two-col">
+                  <div class="form-group">
+                    <label for="qrWifiSsid" class="form-label">Network Name (SSID)</label>
+                    <input
+                      type="text"
+                      id="qrWifiSsid"
+                      class="form-control"
+                      placeholder="MyStore_Guest_WiFi"
+                      value="FreeBiz_Guest"
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label for="qrWifiPass" class="form-label">Password</label>
+                    <input
+                      type="text"
+                      id="qrWifiPass"
+                      class="form-control"
+                      placeholder="Network Password"
+                      value="welcome2026"
+                    />
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="qrWifiEnc" class="form-label">Security Type</label>
+                  <select id="qrWifiEnc" class="form-control">
+                    <option value="WPA">WPA / WPA2 (Most common)</option>
+                    <option value="WEP">WEP</option>
+                    <option value="nopass">None (Open Network)</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Type 5: vCard / Contact Card -->
+              <div id="qrFieldsVcard" style="display: none;">
+                <div class="form-row two-col">
+                  <div class="form-group">
+                    <label for="qrCardName" class="form-label">Full Name</label>
+                    <input type="text" id="qrCardName" class="form-control" value="Alex Morgan" />
+                  </div>
+                  <div class="form-group">
+                    <label for="qrCardOrg" class="form-label">Company / Brand</label>
+                    <input type="text" id="qrCardOrg" class="form-control" value="Morgan Creative Studio" />
+                  </div>
+                </div>
+                <div class="form-row two-col">
+                  <div class="form-group">
+                    <label for="qrCardTel" class="form-label">Phone Number</label>
+                    <input type="tel" id="qrCardTel" class="form-control" value="+1 (555) 019-2834" />
+                  </div>
+                  <div class="form-group">
+                    <label for="qrCardEmail" class="form-label">Email Address</label>
+                    <input type="email" id="qrCardEmail" class="form-control" value="alex@morgancreative.com" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Type 6: Plain Text -->
+              <div id="qrFieldsText" class="form-group" style="display: none;">
+                <label for="qrCustomText" class="form-label">Any Text, Note, or Serial Code</label>
+                <textarea
+                  id="qrCustomText"
+                  class="form-control"
+                  rows="3"
+                  placeholder="Enter any text here to turn it into a QR code"
+                >Welcome to FreeBiz Tools! Scan to explore.</textarea>
+              </div>
+
+              <!-- Customization Panel -->
+              <div style="background-color: var(--bg-surface-subtle); border-radius: var(--radius-md); padding: 1rem; margin-top: 0.5rem;">
+                <span class="form-label" style="margin-bottom: 0.6rem;">Styling & Colors</span>
+
+                <div class="form-row two-col" style="margin-bottom: 0.75rem;">
+                  <!-- Foreground Color -->
+                  <div>
+                    <label for="qrFgColor" class="form-label" style="font-size: 0.8rem;">Pattern Color</label>
+                    <div class="color-picker-row">
+                      <div class="color-input-wrapper">
+                        <input type="color" id="qrFgColor" value="#0f172a" />
+                      </div>
+                      <button type="button" class="swatch-btn" data-swatch-fg="#0f172a" style="background:#0f172a;" title="Charcoal"></button>
+                      <button type="button" class="swatch-btn" data-swatch-fg="#1e40af" style="background:#1e40af;" title="Navy Blue"></button>
+                      <button type="button" class="swatch-btn" data-swatch-fg="#065f46" style="background:#065f46;" title="Forest Green"></button>
+                      <button type="button" class="swatch-btn" data-swatch-fg="#831843" style="background:#831843;" title="Wine Crimson"></button>
+                    </div>
+                  </div>
+
+                  <!-- Background Color -->
+                  <div>
+                    <label for="qrBgColor" class="form-label" style="font-size: 0.8rem;">Background</label>
+                    <div class="color-picker-row">
+                      <div class="color-input-wrapper">
+                        <input type="color" id="qrBgColor" value="#ffffff" />
+                      </div>
+                      <button type="button" class="swatch-btn" data-swatch-fg="#ffffff" style="background:#ffffff; border:1px solid #cbd5e1;" title="White"></button>
+                      <button type="button" class="swatch-btn" data-swatch-fg="#f8fafc" style="background:#f8fafc;" title="Soft Light Gray"></button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-row two-col">
+                  <div>
+                    <label for="qrSize" class="form-label" style="font-size: 0.8rem;">Resolution / Size</label>
+                    <select id="qrSize" class="form-control" style="min-height:38px; font-size:0.85rem;">
+                      <option value="200">Standard (200 x 200 px)</option>
+                      <option value="280" selected>High Res (280 x 280 px)</option>
+                      <option value="420">Print Quality (420 x 420 px)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label for="qrEcLevel" class="form-label" style="font-size: 0.8rem;">Error Correction</label>
+                    <select id="qrEcLevel" class="form-control" style="min-height:38px; font-size:0.85rem;">
+                      <option value="L">Level L (7% recovery)</option>
+                      <option value="M" selected>Level M (15% - Recommended)</option>
+                      <option value="Q">Level Q (25% recovery)</option>
+                      <option value="H">Level H (30% recovery)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Column: Live QR Code Preview & Instant Actions -->
+            <div class="tool-preview-col">
+              <div class="preview-card">
+                <div class="preview-card-header">
+                  <span class="preview-title">Live Preview</span>
+                  <span style="font-size: 0.75rem; color: var(--accent-secondary); font-weight: 600;">✓ Ready to Scan</span>
+                </div>
+
+                <div class="qr-canvas-container">
+                  <canvas id="qrCanvas" width="280" height="280" aria-label="Generated QR Code"></canvas>
+                  <div class="qr-payload-display" id="qrPayloadDisplay" title="Payload encoded in QR code">
+                    https://mybusiness.com
+                  </div>
+                </div>
+
+                <div class="action-grid">
+                  <button type="button" id="btnDownloadQrPng" class="btn btn-primary">
+                    <span>⬇️</span> Download PNG
+                  </button>
+                  <button type="button" id="btnDownloadQrSvg" class="btn btn-secondary">
+                    <span>📐</span> Download SVG
+                  </button>
+                </div>
+
+                <div class="action-grid">
+                  <button type="button" id="btnCopyQrImage" class="btn btn-secondary">
+                    <span>📋</span> Copy Image
+                  </button>
+                  <button type="button" id="btnPrintQr" class="btn btn-secondary">
+                    <span>🖨️</span> Print Card
+                  </button>
+                </div>
+
+                <p style="font-size: 0.78rem; color: var(--text-muted); text-align: center;">
+                  Tip: Test scanning this QR code directly with your phone camera right now!
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================================================
+           TOOL 2: BUSINESS BIO GENERATOR (Predefined Templates, No AI API)
+           =================================================================== -->
+      <section id="bioToolView" class="tool-view" aria-labelledby="bioToolHeading">
+        <div class="tool-card">
+          <div class="tool-header">
+            <div class="tool-title-group">
+              <div class="tool-icon-box">📝</div>
+              <div>
+                <h2 id="bioToolHeading">Business Bio & Profile Generator</h2>
+                <p>Craft high-converting social bios & about sections using proven templates • 100% Free & Private</p>
+              </div>
+            </div>
+            <button type="button" id="btnLoadBioExample" class="btn btn-secondary btn-sm" style="margin-top: 0.5rem;">
+              <span>💡</span> Load Bakery Example
+            </button>
+          </div>
+
+          <div class="tool-grid">
+            <!-- Left Column: Bio Input Form -->
+            <form id="bioGeneratorForm" class="tool-inputs-col">
+              <div class="form-row two-col">
+                <div class="form-group">
+                  <label for="bioBizName" class="form-label">Business or Creator Name</label>
+                  <input type="text" id="bioBizName" class="form-control" value="Riverstone Crafts" required />
+                </div>
+                <div class="form-group">
+                  <label for="bioNiche" class="form-label">Industry or Specialty</label>
+                  <input type="text" id="bioNiche" class="form-control" value="Handcrafted Home & Lifestyle Goods" required />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="bioBenefit" class="form-label">
+                  What You Do or Unique Value <span class="helper">(What makes you special?)</span>
+                </label>
+                <textarea
+                  id="bioBenefit"
+                  class="form-control"
+                  rows="2"
+                  placeholder="e.g. handmade ceramics & natural beeswax candles poured in small batches"
+                  required
+                >unique handmade goods and ceramics created with sustainable organic materials</textarea>
+              </div>
+
+              <div class="form-row two-col">
+                <div class="form-group">
+                  <label for="bioLocation" class="form-label">City, Region, or Online</label>
+                  <input type="text" id="bioLocation" class="form-control" value="Denver, CO" />
+                </div>
+                <div class="form-group">
+                  <label for="bioAudience" class="form-label">Target Audience</label>
+                  <input type="text" id="bioAudience" class="form-control" value="home decor enthusiasts" />
+                </div>
+              </div>
+
+              <div class="form-row two-col">
+                <div class="form-group">
+                  <label for="bioPlatform" class="form-label">Target Destination</label>
+                  <select id="bioPlatform" class="form-control">
+                    <option value="instagram" selected>Instagram & TikTok (Under 150 chars)</option>
+                    <option value="google">Google Business / Local Maps</option>
+                    <option value="linkedin">LinkedIn & Professional Summary</option>
+                    <option value="twitter">Twitter / X (Under 160 chars)</option>
+                    <option value="website">Website "About Us" / Hero Teaser</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="bioTone" class="form-label">Brand Tone</label>
+                  <select id="bioTone" class="form-control">
+                    <option value="friendly" selected>Friendly & Warm</option>
+                    <option value="professional">Professional & Trustworthy</option>
+                    <option value="modern">Modern & Punchy</option>
+                    <option value="minimal">Minimalist & Clean</option>
+                    <option value="bold">Bold & High-Energy</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="bioCta" class="form-label">Call to Action (CTA)</label>
+                <input
+                  type="text"
+                  id="bioCta"
+                  class="form-control"
+                  value="Shop our collection online or DM for custom orders"
+                />
+              </div>
+
+              <button type="submit" class="btn btn-primary btn-block" style="min-height: 46px;">
+                <span>✨</span> Generate Bio Options
+              </button>
+            </form>
+
+            <!-- Right Column: Generated Bio Options -->
+            <div class="tool-preview-col">
+              <div class="preview-card" style="padding: 1rem;">
+                <div class="preview-card-header">
+                  <span class="preview-title">Generated Options</span>
+                  <span style="font-size: 0.75rem; color: var(--text-muted);">Editable before copying</span>
+                </div>
+
+                <div id="bioResultsList" class="results-list">
+                  <!-- Populated dynamically by script.js -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================================================
+           TOOL 3: PRODUCT DESCRIPTION GENERATOR (Predefined Templates, No AI API)
+           =================================================================== -->
+      <section id="productToolView" class="tool-view" aria-labelledby="productToolHeading">
+        <div class="tool-card">
+          <div class="tool-header">
+            <div class="tool-title-group">
+              <div class="tool-icon-box">🏷️</div>
+              <div>
+                <h2 id="productToolHeading">Product Description Generator</h2>
+                <p>Create ready-to-use e-commerce listings, marketplace ads, and sales copy • Template-driven</p>
+              </div>
+            </div>
+            <button type="button" id="btnLoadProductExample" class="btn btn-secondary btn-sm" style="margin-top: 0.5rem;">
+              <span>💡</span> Load Shears Example
+            </button>
+          </div>
+
+          <div class="tool-grid">
+            <!-- Left Column: Product Input Form -->
+            <form id="productDescForm" class="tool-inputs-col">
+              <div class="form-row two-col">
+                <div class="form-group">
+                  <label for="prodName" class="form-label">Product Name</label>
+                  <input type="text" id="prodName" class="form-control" value="Aura Insulated Tumbler" required />
+                </div>
+                <div class="form-group">
+                  <label for="prodCategory" class="form-label">Category</label>
+                  <input type="text" id="prodCategory" class="form-control" value="Drinkware & Travel" required />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="prodFeatures" class="form-label">
+                  Key Features & Materials <span class="helper">(separate by commas or lines)</span>
+                </label>
+                <textarea
+                  id="prodFeatures"
+                  class="form-control"
+                  rows="3"
+                  placeholder="e.g. Double-wall stainless steel, leak-proof lid, keeps drinks hot 12h or cold 24h, dishwasher safe"
+                  required
+                >Double-wall vacuum insulation, 100% leak-proof lid, keeps drinks hot for 12 hours or cold for 24 hours, BPA-free stainless steel</textarea>
+              </div>
+
+              <div class="form-group">
+                <label for="prodBenefit" class="form-label">
+                  Primary Customer Benefit <span class="helper">(What problem does it solve?)</span>
+                </label>
+                <input
+                  type="text"
+                  id="prodBenefit"
+                  class="form-control"
+                  value="enjoy fresh piping hot coffee or ice-cold water on any commute without messy spills"
+                  required
+                />
+              </div>
+
+              <div class="form-row two-col">
+                <div class="form-group">
+                  <label for="prodOffer" class="form-label">Special Offer / Guarantee <span class="helper">(Optional)</span></label>
+                  <input
+                    type="text"
+                    id="prodOffer"
+                    class="form-control"
+                    value="Free shipping on orders over $40 + 30-day money-back guarantee"
+                  />
+                </div>
+                <div class="form-group">
+                  <label for="prodStyle" class="form-label">Description Style</label>
+                  <select id="prodStyle" class="form-control">
+                    <option value="ecommerce" selected>E-commerce Listing (Headline + Story + Bullets)</option>
+                    <option value="story">Artisan & Craft Storytelling</option>
+                    <option value="social">Short & Punchy Social Ad Copy</option>
+                    <option value="marketplace">Classified / Marketplace Listing</option>
+                  </select>
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-primary btn-block" style="min-height: 46px;">
+                <span>✨</span> Generate Product Description
+              </button>
+            </form>
+
+            <!-- Right Column: Generated Product Description -->
+            <div class="tool-preview-col">
+              <div class="preview-card" style="padding: 1rem;">
+                <div class="preview-card-header">
+                  <span class="preview-title">Generated Description</span>
+                  <span style="font-size: 0.75rem; color: var(--text-muted);">Plain text or HTML</span>
+                </div>
+
+                <div id="productDescResults">
+                  <!-- Populated dynamically by script.js -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================================================
+           TOOL 4: INSTANT RECEIPT & MINI-INVOICE (100% Local, Bonus Free Utility)
+           =================================================================== -->
+      <section id="invoiceToolView" class="tool-view" aria-labelledby="invoiceToolHeading">
+        <div class="tool-card">
+          <div class="tool-header">
+            <div class="tool-title-group">
+              <div class="tool-icon-box">🧾</div>
+              <div>
+                <h2 id="invoiceToolHeading">Instant Receipt & Mini-Invoice</h2>
+                <p>Calculate totals, taxes, and print/download clean receipt slips • 100% in-browser</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="tool-grid">
+            <!-- Left Column: Invoice Details & Items -->
+            <div class="tool-inputs-col">
+              <div class="form-row two-col">
+                <div class="form-group">
+                  <label for="invBizName" class="form-label">Your Business Name</label>
+                  <input type="text" id="invBizName" class="form-control" value="Riverstone Crafts & Services" />
+                </div>
+                <div class="form-group">
+                  <label for="invBizContact" class="form-label">Phone, Email, or Address</label>
+                  <input type="text" id="invBizContact" class="form-control" value="orders@riverstone.com | (555) 123-4567" />
+                </div>
+              </div>
+
+              <div class="form-row three-col">
+                <div class="form-group">
+                  <label for="invClientName" class="form-label">Customer Name</label>
+                  <input type="text" id="invClientName" class="form-control" value="Jordan Reed" />
+                </div>
+                <div class="form-group">
+                  <label for="invNumber" class="form-label">Receipt / Inv #</label>
+                  <input type="text" id="invNumber" class="form-control" value="REC-2026-081" />
+                </div>
+                <div class="form-group">
+                  <label for="invDate" class="form-label">Date</label>
+                  <input type="date" id="invDate" class="form-control" value="2026-10-11" />
+                </div>
+              </div>
+
+              <!-- Line Items Table -->
+              <div class="form-group">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                  <label class="form-label" style="margin-bottom: 0;">Items & Services</label>
+                  <button type="button" id="btnAddInvoiceItem" class="btn btn-secondary btn-sm" style="min-height: 34px;">
+                    <span>+</span> Add Item
+                  </button>
+                </div>
+                <div class="invoice-table-wrapper">
+                  <table class="invoice-table">
+                    <thead>
+                      <tr>
+                        <th>Description</th>
+                        <th style="width: 70px; text-align: center;">Qty</th>
+                        <th style="width: 90px; text-align: right;">Price</th>
+                        <th style="width: 80px; text-align: right;">Total</th>
+                        <th style="width: 44px; text-align: center;"></th>
+                      </tr>
+                    </thead>
+                    <tbody id="invoiceItemsTableBody">
+                      <!-- Populated dynamically by script.js -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Tax & Discount Rates -->
+              <div class="form-row two-col">
+                <div class="form-group">
+                  <label for="invTaxRate" class="form-label">Tax Rate (%)</label>
+                  <input type="number" id="invTaxRate" class="form-control" value="8.25" min="0" step="0.25" />
+                </div>
+                <div class="form-group">
+                  <label for="invDiscount" class="form-label">Discount Amount ($)</label>
+                  <input type="number" id="invDiscount" class="form-control" value="0.00" min="0" step="1.00" />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="invNotes" class="form-label">Receipt Notes or Payment Info</label>
+                <input
+                  type="text"
+                  id="invNotes"
+                  class="form-control"
+                  value="Paid via Cash / Card. Thank you for shopping local!"
+                />
+              </div>
+            </div>
+
+            <!-- Right Column: Live Summary & Actions -->
+            <div class="tool-preview-col">
+              <div class="preview-card" id="invoiceSlipArea">
+                <div class="preview-card-header">
+                  <span class="preview-title">Receipt Summary</span>
+                  <span style="font-size: 0.75rem; color: var(--accent-secondary); font-weight: 600;">✓ Auto-Calculated</span>
+                </div>
+
+                <div class="invoice-summary" style="max-width: 100%;">
+                  <div class="invoice-summary-row">
+                    <span>Subtotal:</span>
+                    <strong id="invSubtotalDisplay">$0.00</strong>
+                  </div>
+                  <div class="invoice-summary-row">
+                    <span>Discount:</span>
+                    <span id="invDiscountDisplay" style="color: var(--accent-secondary);">-$0.00</span>
+                  </div>
+                  <div class="invoice-summary-row">
+                    <span>Sales Tax:</span>
+                    <span id="invTaxDisplay">$0.00</span>
+                  </div>
+                  <div class="invoice-summary-row total">
+                    <span>Grand Total:</span>
+                    <span id="invGrandTotalDisplay" style="color: var(--accent-primary);">$0.00</span>
+                  </div>
+                </div>
+
+                <div class="action-grid">
+                  <button type="button" id="btnCopyInvoiceText" class="btn btn-primary">
+                    <span>📋</span> Copy Text Slip
+                  </button>
+                  <button type="button" id="btnDownloadInvoiceTxt" class="btn btn-secondary">
+                    <span>💾</span> Save TXT
+                  </button>
+                </div>
+
+                <button type="button" id="btnPrintInvoice" class="btn btn-secondary btn-block">
+                  <span>🖨️</span> Print or Save PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================================================
+           TOOL 5: PHONE TESTING GUIDE (Step-by-Step Instructions)
+           =================================================================== -->
+      <section id="guideToolView" class="tool-view" aria-labelledby="guideToolHeading">
+        <div class="tool-card">
+          <div class="tool-header">
+            <div class="tool-title-group">
+              <div class="tool-icon-box">📱</div>
+              <div>
+                <h2 id="guideToolHeading">How to Test FreeBiz Tools on Your Phone</h2>
+                <p>Complete instructions for Android phones, iPhones, and DevTools responsive emulation</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 1: Scan Live QR to open immediately on your phone -->
+          <div style="background-color: var(--bg-surface-subtle); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1.5rem; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1rem;">
+            <div style="max-width: 500px;">
+              <h3 style="font-size: 1.15rem; margin-bottom: 0.25rem;">Scan with Phone Camera to Open Instantly</h3>
+              <p style="font-size: 0.85rem; color: var(--text-secondary);">
+                Point your Android or iPhone camera at this code to open FreeBiz Tools directly in Chrome or Safari:
+              </p>
+            </div>
+            <div style="background: white; padding: 1rem; border-radius: var(--radius-md); box-shadow: var(--shadow-sm); border: 1px solid var(--border-subtle);">
+              <canvas id="phoneTestQrCanvas" width="200" height="200" aria-label="QR Code pointing to this app URL"></canvas>
+            </div>
+            <p id="phoneTestUrlText" style="font-family: var(--font-mono); font-size: 0.76rem; color: var(--text-muted); word-break: break-all; max-width: 480px;">
+              Loading app address...
+            </p>
+          </div>
+
+          <!-- 4-Step Mobile Guide Grid -->
+          <div class="guide-card-grid">
+            <!-- Card A: Android Chrome Testing -->
+            <div class="guide-step-card">
+              <div style="display: flex; align-items: center; gap: 0.6rem;">
+                <span class="guide-step-num">1</span>
+                <h3 style="font-size: 1.05rem;">Testing on Android Phones</h3>
+              </div>
+              <ul class="guide-list">
+                <li><strong>Open in Chrome:</strong> Open the Google Chrome app on your Android phone and scan or paste the URL above.</li>
+                <li><strong>Thumb Ergonomics:</strong> Test tapping the bottom navigation bar with one thumb. Notice all buttons have large 44px+ touch hitboxes.</li>
+                <li><strong>File Downloads:</strong> Tap "Download PNG" or "Save TXT" — Android will save the files directly to your device's <em>Downloads</em> folder.</li>
+                <li><strong>Clipboard Test:</strong> Tap "Copy Bio" or "Copy Text Slip" — you will see a green confirmation toast, and the text will be immediately ready to paste in WhatsApp, Notes, or Instagram.</li>
+              </ul>
+            </div>
+
+            <!-- Card B: Install to Home Screen -->
+            <div class="guide-step-card">
+              <div style="display: flex; align-items: center; gap: 0.6rem;">
+                <span class="guide-step-num">2</span>
+                <h3 style="font-size: 1.05rem;">Add to Home Screen (Web App)</h3>
+              </div>
+              <ul class="guide-list">
+                <li><strong>On Android (Chrome):</strong> Tap the 3-dot menu (⋮) in the top right corner &gt; tap <em>"Add to Home screen"</em> or <em>"Install app"</em>.</li>
+                <li><strong>On iPhone (Safari):</strong> Tap the Share button (square with arrow) &gt; scroll down and tap <em>"Add to Home Screen"</em>.</li>
+                <li><strong>Launch Fullscreen:</strong> Open it from your phone's home screen icon. It functions like a native, lightning-fast offline business toolbox.</li>
+              </ul>
+            </div>
+
+            <!-- Card C: DevTools Emulation -->
+            <div class="guide-step-card">
+              <div style="display: flex; align-items: center; gap: 0.6rem;">
+                <span class="guide-step-num">3</span>
+                <h3 style="font-size: 1.05rem;">Testing via Desktop Browser DevTools</h3>
+              </div>
+              <ul class="guide-list">
+                <li><strong>Open DevTools:</strong> Press <kbd style="background:#e2e8f0; padding:2px 5px; border-radius:4px; font-size:0.8rem;">F12</kbd> or <kbd style="background:#e2e8f0; padding:2px 5px; border-radius:4px; font-size:0.8rem;">Ctrl+Shift+I</kbd> (Mac: <kbd style="background:#e2e8f0; padding:2px 5px; border-radius:4px; font-size:0.8rem;">Cmd+Option+I</kbd>).</li>
+                <li><strong>Toggle Device Mode:</strong> Click the phone/tablet icon or press <kbd style="background:#e2e8f0; padding:2px 5px; border-radius:4px; font-size:0.8rem;">Ctrl+Shift+M</kbd>.</li>
+                <li><strong>Select Devices:</strong> Test on <em>Samsung Galaxy S20 Ultra</em>, <em>Google Pixel 7</em>, and <em>iPhone 14 Pro</em>.</li>
+                <li><strong>Verify Layout:</strong> Check that there is zero horizontal scroll, text does not overflow, and inputs are easily readable.</li>
+              </ul>
+            </div>
+
+            <!-- Card D: Offline & Privacy Test -->
+            <div class="guide-step-card">
+              <div style="display: flex; align-items: center; gap: 0.6rem;">
+                <span class="guide-step-num">4</span>
+                <h3 style="font-size: 1.05rem;">Airplane Mode & Privacy Verification</h3>
+              </div>
+              <ul class="guide-list">
+                <li><strong>Turn on Airplane Mode:</strong> After opening the page, switch your phone to Airplane Mode (or toggle "Offline" in DevTools Network tab).</li>
+                <li><strong>Test Generators:</strong> Generate new QR codes, create bios, and calculate invoices — notice everything continues to work 100% offline!</li>
+                <li><strong>Zero Data Leaks:</strong> Open the Network tab. Zero requests are sent when you type, generate, or download. Your business data remains completely private.</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Interactive Mobile QA Checklist -->
+          <div class="checklist-group">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <h3 style="font-size: 1rem; margin-bottom: 2px;">Interactive Testing Checklist</h3>
+                <span id="testProgressLabel" style="font-size: 0.8rem; color: var(--accent-secondary); font-weight: 600;">
+                  0 of 5 tests verified
+                </span>
+              </div>
+              <button type="button" id="btnResetChecklist" class="btn btn-secondary btn-sm" style="min-height: 32px; font-size: 0.78rem;">
+                Reset
+              </button>
+            </div>
+
+            <label class="checklist-item">
+              <input type="checkbox" class="test-checkbox" />
+              <span><strong>1. QR Code Generator:</strong> Generated a QR code and downloaded the PNG image successfully.</span>
+            </label>
+            <label class="checklist-item">
+              <input type="checkbox" class="test-checkbox" />
+              <span><strong>2. Bio Generator:</strong> Generated 3 social bio options and copied one to the clipboard with green toast.</span>
+            </label>
+            <label class="checklist-item">
+              <input type="checkbox" class="test-checkbox" />
+              <span><strong>3. Product Description:</strong> Generated an e-commerce description and downloaded the .txt file.</span>
+            </label>
+            <label class="checklist-item">
+              <input type="checkbox" class="test-checkbox" />
+              <span><strong>4. Touch & Responsive:</strong> Verified that all tabs and buttons are comfortably tap-friendly without zooming.</span>
+            </label>
+            <label class="checklist-item">
+              <input type="checkbox" class="test-checkbox" />
+              <span><strong>5. No Sign-up or Data Leak:</strong> Confirmed no login forms, credit card prompts, or third-party tracking exist.</span>
+            </label>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Mobile Fixed Bottom Navigation Bar (Visible only on screens < 768px) -->
+    <nav class="mobile-bottom-nav" aria-label="Mobile Bottom Navigation">
+      <button type="button" class="bottom-nav-item active" data-tab="qr" aria-label="QR Generator">
+        <span class="icon">🔲</span>
+        <span class="label">QR Code</span>
+      </button>
+      <button type="button" class="bottom-nav-item" data-tab="bio" aria-label="Bio Generator">
+        <span class="icon">📝</span>
+        <span class="label">Bios</span>
+      </button>
+      <button type="button" class="bottom-nav-item" data-tab="product" aria-label="Product Descriptions">
+        <span class="icon">🏷️</span>
+        <span class="label">Products</span>
+      </button>
+      <button type="button" class="bottom-nav-item" data-tab="invoice" aria-label="Instant Receipts">
+        <span class="icon">🧾</span>
+        <span class="label">Receipts</span>
+      </button>
+      <button type="button" class="bottom-nav-item" data-tab="guide" aria-label="Phone Guide">
+        <span class="icon">📱</span>
+        <span class="label">Guide</span>
+      </button>
+    </nav>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+    <!-- Site Footer -->
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <div>
+          <strong style="color: var(--text-primary);">FreeBiz Tools</strong>
+          <span style="margin: 0 0.5rem; color: var(--border-subtle);">|</span>
+          <span>100% Free, Private, Local Browser Utilities for Small Business</span>
+        </div>
+        <div class="footer-links">
+          <button type="button" data-footer-jump="qr">QR Code</button>
+          <button type="button" data-footer-jump="bio">Bio Writer</button>
+          <button type="button" data-footer-jump="product">Descriptions</button>
+          <button type="button" data-footer-jump="invoice">Receipts</button>
+          <button type="button" data-footer-jump="guide">Mobile Guide</button>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Vanilla JavaScript Core Engine -->
+    <script type="module" src="/script.js"></script>
+  </body>
+</html>
