@@ -1,0 +1,81 @@
+name: Build and Release FreeBiz Android APK
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: freebiz-android-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-android:
+    name: Build Android APK and publish GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install web dependencies
+        run: npm ci
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Install Capacitor Android tooling
+        run: npm install --no-save --package-lock=false @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
+
+      - name: Generate Android wrapper
+        run: npx cap add android
+
+      - name: Copy web build into Android project
+        run: npx cap sync android
+
+      - name: Build installable debug APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Prepare APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk FreeBiz-Android.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FreeBiz-Android-APK
+          path: FreeBiz-Android.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish APK to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: freebiz-android-build-${{ github.run_number }}
+          APK_PATH: FreeBiz-Android.apk
+        run: |
+          gh release create "$TAG_NAME" "$APK_PATH" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "FreeBiz Android APK (Build ${{ github.run_number }})" \
+            --notes "Automated Android APK build from commit $GITHUB_SHA. This is a debug-signed APK for testing and direct installation, not a Play Store release."
