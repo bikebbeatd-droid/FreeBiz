@@ -1,0 +1,6 @@
+{
+  "appId": "com.bikebbeatd.freebiz",
+  "appName": "FreeBiz",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}
