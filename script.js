@@ -1,23 +1,48 @@
 /**
- * FreeBiz Tools — Core JavaScript Application Engine
+ * FreeBiz Tools — Production JavaScript Engine
  * 100% Client-Side • Zero AI APIs • Zero External Tracking
  * 
- * Includes:
- * 1. Verified ISO-compliant QR Code Generator (Reed-Solomon GF(256), Canvas & SVG)
- * 2. Template-Driven Business Bio Generator
- * 3. Structured Product Description Generator
- * 4. Configurable Currency Invoice / Receipt Calculator (PKR Default)
- * 5. Clipboard & File Export Utilities with Honest Feedback
- * 6. Mobile Testing Guide & Persistent Checklist
+ * Secure, accessible, mobile-first controller connecting UI elements
+ * to verified core business logic in src/core.js.
  */
 
 import QRCode from "qrcode";
+import {
+  escapeHtml,
+  validateAndFormatUrl,
+  validatePhoneNumber,
+  formatWhatsAppPayload,
+  escapeWifiField,
+  formatWifiPayload,
+  escapeVcardField,
+  formatVcardPayload,
+  isValidHexColor,
+  getContrastRatio,
+  validateQuantity,
+  validatePrice,
+  validateTaxRate,
+  validateDiscount,
+  calculateInvoiceSummary,
+  formatCurrency,
+  generateReceiptTextSlip,
+  generateBioOutputs,
+  generateProductDescriptionOutputs,
+  safeGetStorage,
+  safeSetStorage,
+  safeRemoveStorage
+} from "./src/core.js";
 
 /* ==========================================================================
-   PART 1: TOAST NOTIFICATIONS & CLIPBOARD UTILITIES
+   PART 1: TOAST NOTIFICATIONS & CLIPBOARD UTILITIES (SAFE DOM)
    ========================================================================== */
 
-function showToast(message, type = "normal", duration = 3000) {
+/**
+ * Displays a toast notification with strict safe DOM element creation (Zero XSS).
+ * @param {string} message
+ * @param {"normal" | "success" | "error"} [type="normal"]
+ * @param {number} [duration=3000]
+ */
+export function showToast(message, type = "normal", duration = 3000) {
   const container = document.getElementById("toastContainer");
   if (!container) return;
 
@@ -26,8 +51,17 @@ function showToast(message, type = "normal", duration = 3000) {
   toast.setAttribute("role", "status");
 
   const icon = type === "success" ? "✓" : type === "error" ? "✕" : "ℹ";
-  toast.innerHTML = `<span style="font-weight:700;" aria-hidden="true">${icon}</span> <span>${message}</span>`;
+  
+  const iconSpan = document.createElement("span");
+  iconSpan.style.fontWeight = "700";
+  iconSpan.setAttribute("aria-hidden", "true");
+  iconSpan.textContent = icon;
 
+  const msgSpan = document.createElement("span");
+  msgSpan.textContent = message; // Safe plain text insertion
+
+  toast.appendChild(iconSpan);
+  toast.appendChild(msgSpan);
   container.appendChild(toast);
 
   setTimeout(() => {
@@ -38,8 +72,13 @@ function showToast(message, type = "normal", duration = 3000) {
   }, duration);
 }
 
-// Robust Cross-Browser Copy with Honest Feedback
-async function copyTextToClipboard(text, successMessage = "Copied to clipboard!") {
+/**
+ * Robust Cross-Browser Copy with honest user feedback.
+ * @param {string} text
+ * @param {string} [successMessage="Copied to clipboard!"]
+ * @returns {Promise<boolean>}
+ */
+export async function copyTextToClipboard(text, successMessage = "Copied to clipboard!") {
   if (!text || !text.trim()) {
     showToast("Nothing to copy", "error");
     return false;
@@ -52,7 +91,7 @@ async function copyTextToClipboard(text, successMessage = "Copied to clipboard!"
       return true;
     }
   } catch (err) {
-    console.warn("Navigator clipboard write failed, trying execCommand fallback:", err);
+    console.warn("Navigator clipboard write failed, attempting execCommand fallback:", err);
   }
 
   try {
@@ -78,8 +117,13 @@ async function copyTextToClipboard(text, successMessage = "Copied to clipboard!"
   return false;
 }
 
-// Download Plain Text / HTML file with meaningful filename
-function downloadTextFile(filename, content, mimeType = "text/plain;charset=utf-8") {
+/**
+ * Downloads plain text / markup file with meaningful filename.
+ * @param {string} filename
+ * @param {string} content
+ * @param {string} [mimeType="text/plain;charset=utf-8"]
+ */
+export function downloadTextFile(filename, content, mimeType = "text/plain;charset=utf-8") {
   try {
     const blob = new Blob([content], { type: mimeType });
     const url = URL.createObjectURL(blob);
@@ -97,36 +141,13 @@ function downloadTextFile(filename, content, mimeType = "text/plain;charset=utf-
   }
 }
 
-// Calculate relative luminance for color contrast checking (WCAG 2.1)
-function getLuminance(hex) {
-  const clean = hex.replace("#", "");
-  const num = parseInt(clean, 16);
-  const r = (num >> 16) & 255;
-  const g = (num >> 8) & 255;
-  const b = num & 255;
-
-  const [rs, gs, bs] = [r, g, b].map(c => {
-    const s = c / 255;
-    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
-  });
-  return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
-}
-
-function getContrastRatio(hex1, hex2) {
-  const l1 = getLuminance(hex1);
-  const l2 = getLuminance(hex2);
-  const lighter = Math.max(l1, l2);
-  const darker = Math.min(l1, l2);
-  return (lighter + 0.05) / (darker + 0.05);
-}
-
 /* ==========================================================================
    PART 2: QR CODE TOOL CONTROLLER
    ========================================================================== */
 
 let currentQRData = "";
 
-function initQRCodeTool() {
+export function initQRCodeTool() {
   const canvas = document.getElementById("qrCanvas");
   if (!canvas) return;
 
@@ -178,47 +199,27 @@ function initQRCodeTool() {
     btn.addEventListener("click", () => switchType(btn.dataset.type));
   });
 
-  // Escape special MECARD/WIFI characters: \ ; , : "
-  function escapeWifiField(str) {
-    if (!str) return "";
-    return str.replace(/([\\;,:"'])/g, "\\$1");
-  }
-
-  // Escape vCard special characters: \ ; , \n
-  function escapeVcardField(str) {
-    if (!str) return "";
-    return str
-      .replace(/\\/g, "\\\\")
-      .replace(/;/g, "\\;")
-      .replace(/,/g, "\\,")
-      .replace(/\n/g, "\\n");
-  }
-
-  // Get payload from user input; return null if input is empty
+  // Extract payload using pure validation routines
   function getPayload() {
     switch (activeType) {
       case "url": {
-        let val = document.getElementById("qrUrlInput")?.value.trim() || "";
+        const val = document.getElementById("qrUrlInput")?.value.trim() || "";
         if (!val) return null;
-        if (!/^https?:\/\//i.test(val)) {
-          val = "https://" + val;
-        }
-        return val;
+        const res = validateAndFormatUrl(val);
+        return res.valid ? res.url : null;
       }
       case "phone": {
         const raw = document.getElementById("qrPhoneInput")?.value.trim() || "";
         if (!raw) return null;
-        const cleaned = raw.replace(/[^\d+]/g, "");
-        if (cleaned.length < 5) return null;
-        return `tel:${cleaned}`;
+        const res = validatePhoneNumber(raw);
+        return res.valid ? `tel:${res.phone}` : null;
       }
       case "whatsapp": {
         const rawPhone = document.getElementById("qrWaPhone")?.value.trim() || "";
         if (!rawPhone) return null;
-        const phone = rawPhone.replace(/\D/g, "");
-        if (phone.length < 7) return null;
-        const msg = document.getElementById("qrWaMsg")?.value.trim() || "";
-        return msg ? `https://wa.me/${phone}?text=${encodeURIComponent(msg)}` : `https://wa.me/${phone}`;
+        const rawMsg = document.getElementById("qrWaMsg")?.value.trim() || "";
+        const res = formatWhatsAppPayload(rawPhone, rawMsg);
+        return res.valid ? res.payload : null;
       }
       case "wifi": {
         const ssid = document.getElementById("qrWifiSsid")?.value.trim() || "";
@@ -226,14 +227,8 @@ function initQRCodeTool() {
         const enc = document.getElementById("qrWifiEnc")?.value || "WPA";
         const pass = document.getElementById("qrWifiPass")?.value || "";
         const isHidden = document.getElementById("qrWifiHidden")?.checked || false;
-
-        const escapedSsid = escapeWifiField(ssid);
-        const hiddenParam = isHidden ? "H:true;" : "";
-
-        if (enc === "nopass") {
-          return `WIFI:T:nopass;S:${escapedSsid};${hiddenParam};`;
-        }
-        return `WIFI:T:${enc};S:${escapedSsid};P:${escapeWifiField(pass)};${hiddenParam};`;
+        const res = formatWifiPayload({ ssid, password: pass, encryption: enc, isHidden });
+        return res.valid ? res.payload : null;
       }
       case "vcard": {
         const name = document.getElementById("qrCardName")?.value.trim() || "";
@@ -241,25 +236,8 @@ function initQRCodeTool() {
         const tel = document.getElementById("qrCardTel")?.value.trim() || "";
         const email = document.getElementById("qrCardEmail")?.value.trim() || "";
         const title = document.getElementById("qrCardTitle")?.value.trim() || "";
-
-        if (!name && !org && !tel && !email) return null;
-
-        // Structured name: split into last and first name if possible
-        const nameParts = name.split(/\s+/);
-        const firstName = nameParts.length > 1 ? nameParts.slice(0, -1).join(" ") : name;
-        const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : "";
-
-        let vcard = `BEGIN:VCARD\nVERSION:3.0\n`;
-        if (name) {
-          vcard += `FN:${escapeVcardField(name)}\n`;
-          vcard += `N:${escapeVcardField(lastName)};${escapeVcardField(firstName)};;;\n`;
-        }
-        if (org) vcard += `ORG:${escapeVcardField(org)}\n`;
-        if (title) vcard += `TITLE:${escapeVcardField(title)}\n`;
-        if (tel) vcard += `TEL;TYPE=CELL,VOICE:${escapeVcardField(tel)}\n`;
-        if (email) vcard += `EMAIL;TYPE=WORK,INTERNET:${escapeVcardField(email)}\n`;
-        vcard += `END:VCARD`;
-        return vcard;
+        const res = formatVcardPayload({ name, org, tel, email, title });
+        return res.valid ? res.payload : null;
       }
       case "text":
       default: {
@@ -278,12 +256,15 @@ function initQRCodeTool() {
 
   async function updateQR() {
     const payload = getPayload();
-    const fg = fgColorInput?.value || "#0f172a";
-    const bg = bgColorInput?.value || "#ffffff";
+    let fg = fgColorInput?.value || "#0f172a";
+    let bg = bgColorInput?.value || "#ffffff";
+    if (!isValidHexColor(fg)) fg = "#0f172a";
+    if (!isValidHexColor(bg)) bg = "#ffffff";
+
     const size = parseInt(sizeSelect?.value || "280", 10);
     const ec = ecSelect?.value || "M";
 
-    // Check color contrast
+    // Validate WCAG color contrast
     const contrast = getContrastRatio(fg, bg);
     if (contrastNotice) {
       contrastNotice.style.display = contrast < 3.0 ? "flex" : "none";
@@ -331,7 +312,7 @@ function initQRCodeTool() {
     }
   }
 
-  // Bind inputs to live update
+  // Bind input listeners
   const inputsToWatch = document.querySelectorAll(
     "#qrFieldsUrl input, #qrFieldsPhone input, #qrFieldsWhatsapp input, #qrFieldsWhatsapp textarea, #qrFieldsWifi input, #qrFieldsWifi select, #qrFieldsVcard input, #qrFieldsText textarea, #qrFgColor, #qrBgColor, #qrSize, #qrEcLevel, #qrWifiHidden"
   );
@@ -340,7 +321,7 @@ function initQRCodeTool() {
     el.addEventListener("change", updateQR);
   });
 
-  // Wi-Fi security change handler: hide password when open
+  // Wi-Fi security toggle: hide password when open
   document.getElementById("qrWifiEnc")?.addEventListener("change", e => {
     const passGroup = document.getElementById("qrWifiPassGroup");
     if (passGroup) {
@@ -348,7 +329,7 @@ function initQRCodeTool() {
     }
   });
 
-  // Bind foreground swatches to [data-swatch-fg]
+  // Foreground swatches: strictly binds to [data-swatch-fg]
   document.querySelectorAll("[data-swatch-fg]").forEach(btn => {
     btn.addEventListener("click", () => {
       if (fgColorInput) fgColorInput.value = btn.dataset.swatchFg;
@@ -356,7 +337,7 @@ function initQRCodeTool() {
     });
   });
 
-  // Bind background swatches to [data-swatch-bg]
+  // Background swatches: strictly binds to [data-swatch-bg]
   document.querySelectorAll("[data-swatch-bg]").forEach(btn => {
     btn.addEventListener("click", () => {
       if (bgColorInput) bgColorInput.value = btn.dataset.swatchBg;
@@ -364,7 +345,7 @@ function initQRCodeTool() {
     });
   });
 
-  // Action: Download PNG
+  // Download PNG
   btnDownloadPng?.addEventListener("click", () => {
     if (!currentQRData) {
       showToast("Please enter content to generate a QR code first.", "error");
@@ -387,7 +368,7 @@ function initQRCodeTool() {
     }
   });
 
-  // Action: Download SVG
+  // Download SVG
   btnDownloadSvg?.addEventListener("click", async () => {
     if (!currentQRData) {
       showToast("Please enter content to generate a QR code first.", "error");
@@ -411,7 +392,7 @@ function initQRCodeTool() {
     }
   });
 
-  // Action: Copy QR Code Image to Clipboard (Honest feedback)
+  // Copy QR Image (Honest browser detection)
   btnCopyImage?.addEventListener("click", () => {
     if (!currentQRData) {
       showToast("No QR code content to copy", "error");
@@ -438,7 +419,7 @@ function initQRCodeTool() {
     }, "image/png");
   });
 
-  // Action: Print QR Code
+  // Print QR Code
   btnPrint?.addEventListener("click", () => {
     if (!currentQRData) {
       showToast("Please enter content to generate a QR code before printing.", "error");
@@ -447,7 +428,7 @@ function initQRCodeTool() {
     window.print();
   });
 
-  // Action: Load Sample Data
+  // Explicit Sample Data Loader
   document.getElementById("btnLoadQrExample")?.addEventListener("click", () => {
     switch (activeType) {
       case "url":
@@ -480,222 +461,102 @@ function initQRCodeTool() {
     showToast(`Loaded sample data for ${activeType.toUpperCase()} QR code`, "normal");
   });
 
-  // Initial check (starts empty)
+  // Starts with clean empty inputs
   updateQR();
 }
 
 /* ==========================================================================
-   PART 3: BUSINESS BIO GENERATOR (Predefined Templates, No AI API)
+   PART 3: BUSINESS BIO GENERATOR (Predefined Templates, Safe DOM)
    ========================================================================== */
 
-const BIO_TEMPLATES = {
-  instagram: {
-    friendly: [
-      "{name} ✨\n🌿 {niche}{location_line}\n💛 {benefit}\n👇 {cta}",
-      "Assalam-o-Alaikum! We're {name} 👋\n📍 {location}\n✨ {benefit}\n💬 {cta}",
-      "Welcome to {name} ☕\n🌱 Crafted with care in {location}\n💫 {benefit}\nTap to connect ⤵️\n{cta}"
-    ],
-    professional: [
-      "{name} | {niche}\nTrusted {niche} in {location}.\n✓ {benefit}\nContact & Inquiries: {cta}",
-      "{name}\nOfficial account for {location}.\nDelivering {benefit}.\nGet in touch today ⬇️\n{cta}",
-      "{name} — Excellence in {niche}.\nHelping clients across {location} with {benefit}.\n{cta}"
-    ],
-    modern: [
-      "{name} // {location}\n{benefit}.\nSimple. Reliable. Fast.\n🔗 {cta}",
-      "{name} • {niche}\nModern solutions for {audience}.\n{benefit}\nTap below ⚡\n{cta}",
-      "{name}\n{benefit}.\nBuilt for {location}.\n{cta} ↘️"
-    ],
-    minimal: [
-      "{name}\n{niche} · {location}\n{benefit}\n{cta}",
-      "{name} — {benefit}.\nBased in {location}.\n{cta}",
-      "{name}\n{benefit}\n{cta}"
-    ],
-    bold: [
-      "🔥 {name} is here to upgrade your {niche}.\n📍 {location}\n🚀 {benefit}\nConnect now ⬇️\n{cta}",
-      "Say goodbye to delays. Welcome to {name}! 💥\nServing {location} daily.\n{benefit}\nLet's get started: {cta}",
-      "{name} = {niche} done right.\n{benefit}\nTap below and see why {location} trusts us 👇\n{cta}"
-    ]
-  },
-  google: {
-    friendly: [
-      "Welcome to {name}! We are a local {niche} proudly serving {location} and nearby areas. Our goal is simple: {benefit}. Whether you are visiting for the first time or a familiar face, we look forward to assisting you. {cta}",
-      "At {name}, we take great pride in delivering friendly {niche} service to our community in {location}. We focus on {benefit} so you get quality you can trust every single time. Reach out today: {cta}"
-    ],
-    professional: [
-      "{name} is a premier {niche} provider based in {location}. Dedicated to professional standards, reliability, and client satisfaction, our team specializes in {benefit}. Fully committed to serving residential and commercial clients across the region. {cta}",
-      "Established to provide dependable {niche} solutions, {name} delivers reliable service across {location}. Our core focus: {benefit}. Contact us today to schedule service or request a quote. {cta}"
-    ],
-    modern: [
-      "{name} brings modern, hassle-free {niche} services to {location}. We help our clients by {benefit}. Clean process, honest pricing, and genuine dedication. {cta}",
-      "Quality {niche} services designed for modern businesses. {name} serves {location} with a focus on {benefit}. Transparent, reliable, and prompt. {cta}"
-    ],
-    minimal: [
-      "{name} provides dedicated {niche} services in {location}. Specializing in {benefit}. Call or message to get started: {cta}",
-      "{name} — Local {niche} in {location}. {benefit}. {cta}"
-    ],
-    bold: [
-      "Looking for top-rated {niche} in {location}? {name} delivers results that speak for themselves. We guarantee {benefit}. Experience the difference today: {cta}",
-      "{name} is raising the standard for {niche} across {location}. We specialize in {benefit}. Stop settling for less — contact us now: {cta}"
-    ]
-  },
-  linkedin: {
-    professional: [
-      "{name} is a dedicated {niche} provider based in {location}. We partner with {audience} to deliver measurable outcomes through {benefit}. Our approach combines industry expertise, clear communication, and customer-first execution.\n\nKey focus areas:\n• Specialized {niche} solutions\n• {benefit}\n• Dedicated support for {location}\n\nConnect with us or visit our link to learn more: {cta}",
-      "Founded with a mission to elevate the {niche} space, {name} provides high-touch solutions for clients in {location}. We specialize in {benefit}, ensuring every project meets rigorous quality benchmarks.\n\nOpen for partnerships and new client inquiries: {cta}"
-    ],
-    friendly: [
-      "Hi! We're {name}. We specialize in {niche} for {location}, with a passion for {benefit}. We believe that good business is built on trust, genuine relationships, and consistently exceeding expectations.\n\nWe love connecting with fellow professionals and customers. Let's chat: {cta}",
-      "At {name}, we love what we do! Serving {location} as your trusted {niche} partner, we focus every day on {benefit}.\n\nFeel free to connect or visit our site: {cta}"
-    ],
-    modern: [
-      "{name} | Transforming {niche} in {location}.\n\nWe deliver {benefit}.\n\nBuilt for {audience} who value efficiency and craft.\n\nLearn more: {cta}",
-      "{name} — Modern {niche} solutions.\n\nHelping {location} achieve {benefit}.\n\nConnect with our team: {cta}"
-    ],
-    minimal: [
-      "{name} | {niche} | {location}\n\nFocused on {benefit}.\n\nInquiries: {cta}",
-      "{name} provides {niche} in {location}. Our mission: {benefit}. {cta}"
-    ],
-    bold: [
-      "{name} is setting a new benchmark for {niche} in {location}.\n\nWe don't do cookie-cutter. We deliver {benefit}.\n\nReady to elevate your standards? Let's connect: {cta}",
-      "Driven by results and relentless dedication, {name} delivers {benefit} for clients throughout {location}.\n\nStart the conversation: {cta}"
-    ]
-  },
-  twitter: {
-    friendly: [
-      "{name} ✨ Your trusted {niche} in {location}. Making sure {benefit}. 🔗 {cta}",
-      "Small team, big passion. {name} serves {location} with {benefit}. Say hello! ⬇️ {cta}"
-    ],
-    professional: [
-      "{name} | {niche} based in {location}. Providing {benefit}. Inquiries: {cta}",
-      "Official account for {name}. Delivering trusted {niche} solutions in {location}. {cta}"
-    ],
-    modern: [
-      "{name} // {location}. {benefit}. Tap below to explore: {cta}",
-      "{name} • Reimagining {niche}. {benefit}. ⚡ {cta}"
-    ],
-    minimal: [
-      "{name} — {niche} in {location}. {benefit}. {cta}",
-      "{name} · {benefit} · {cta}"
-    ],
-    bold: [
-      "Upgrading {niche} in {location}. {name} brings {benefit}. Check us out: {cta}",
-      "The {niche} you actually want. {name} = {benefit}. Let's go 👇 {cta}"
-    ]
-  },
-  website: {
-    friendly: [
-      "Welcome to {name}! We started with a very simple goal: to bring genuine care and unmatched quality to our friends and neighbors in {location}. As a dedicated {niche}, we work hard every day to ensure {benefit}. Thank you for supporting an independent local business — we can't wait to work with you. {cta}",
-      "Every great story begins with a passion. For {name}, that passion is providing {location} with exceptional {niche}. We believe in craftsmanship, honesty, and {benefit}. Explore our offerings today: {cta}"
-    ],
-    professional: [
-      "At {name}, our commitment is to provide premier {niche} services with integrity and precision. Operating from {location}, we have built a reputation for excellence by ensuring {benefit}. Our experienced team tailors each engagement to the unique needs of our clients. {cta}",
-      "{name} is an established {niche} firm serving {location}. We focus on delivering sustainable value through {benefit}. Contact us today to discuss how we can serve your needs. {cta}"
-    ],
-    modern: [
-      "{name} was built for modern standards. Located in {location}, we blend streamlined execution with deep domain craft to deliver {benefit}. Clean, transparent, and focused entirely on outcomes. {cta}",
-      "We believe {niche} should be straightforward, beautiful, and dependable. At {name}, we help {location} experience {benefit}. See what we do: {cta}"
-    ],
-    minimal: [
-      "{name} is a {niche} based in {location}. We specialize in {benefit}. {cta}",
-      "Simple, honest {niche} in {location}. At {name}, our mission is {benefit}. {cta}"
-    ],
-    bold: [
-      "Welcome to {name}. We're not here to be just another {niche} in {location}. We're here to redefine quality by guaranteeing {benefit}. If you expect excellence, you're in the right place. {cta}",
-      "Tired of mediocre service? At {name}, we do {niche} differently. From {location} to the world, we deliver {benefit}. Get started right now: {cta}"
-    ]
-  }
-};
-
-function initBioTool() {
+export function initBioTool() {
   const form = document.getElementById("bioGeneratorForm");
   const resultsContainer = document.getElementById("bioResultsList");
   if (!form || !resultsContainer) return;
 
   function generateBios() {
-    const name = document.getElementById("bioBizName")?.value.trim();
-    const niche = document.getElementById("bioNiche")?.value.trim();
-    const benefit = document.getElementById("bioBenefit")?.value.trim();
-    const location = document.getElementById("bioLocation")?.value.trim() || "our community";
-    const audience = document.getElementById("bioAudience")?.value.trim() || "valued clients";
-    const cta = document.getElementById("bioCta")?.value.trim() || "Contact us or tap the link to learn more";
-    const tone = document.getElementById("bioTone")?.value || "friendly";
-    const platform = document.getElementById("bioPlatform")?.value || "instagram";
+    const name = document.getElementById("bioBizName")?.value;
+    const niche = document.getElementById("bioNiche")?.value;
+    const benefit = document.getElementById("bioBenefit")?.value;
+    const location = document.getElementById("bioLocation")?.value;
+    const audience = document.getElementById("bioAudience")?.value;
+    const cta = document.getElementById("bioCta")?.value;
+    const tone = document.getElementById("bioTone")?.value;
+    const platform = document.getElementById("bioPlatform")?.value;
 
-    if (!name || !niche || !benefit) {
-      showToast("Please fill in Business Name, Industry, and Value Proposition.", "error");
+    const res = generateBioOutputs({ name, niche, benefit, location, audience, cta, tone, platform });
+    if (!res.valid) {
+      showToast(res.error, "error");
       return;
-    }
-
-    const platformGroup = BIO_TEMPLATES[platform] || BIO_TEMPLATES.instagram;
-    const toneTemplates = platformGroup[tone] || platformGroup.friendly || [];
-
-    const templates = [...toneTemplates];
-    if (templates.length < 3 && platformGroup.modern) {
-      templates.push(...platformGroup.modern);
     }
 
     resultsContainer.innerHTML = "";
 
-    const chosen = templates.slice(0, 3);
-    chosen.forEach((tpl, idx) => {
-      let text = tpl
-        .replace(/\{name\}/g, name)
-        .replace(/\{niche\}/g, niche)
-        .replace(/\{benefit\}/g, benefit)
-        .replace(/\{location\}/g, location)
-        .replace(/\{location_line\}/g, location !== "our community" ? ` in ${location}` : "")
-        .replace(/\{audience\}/g, audience)
-        .replace(/\{cta\}/g, cta);
+    const platformNames = {
+      instagram: "Instagram & TikTok",
+      google: "Google Business",
+      linkedin: "LinkedIn / Professional",
+      twitter: "Twitter / X (<160 chars)",
+      website: "Website About Us"
+    };
 
+    res.results.forEach((item, idx) => {
+      // Build safe DOM tree using document.createElement (Zero XSS)
       const card = document.createElement("div");
       card.className = "result-card";
 
-      const platformNames = {
-        instagram: "Instagram & TikTok",
-        google: "Google Business",
-        linkedin: "LinkedIn / Professional",
-        twitter: "Twitter / X (<160 chars)",
-        website: "Website About Us"
-      };
+      const meta = document.createElement("div");
+      meta.className = "result-meta";
 
-      const charCount = text.length;
-      const wordCount = text.split(/\s+/).filter(Boolean).length;
+      const tag = document.createElement("span");
+      tag.className = "result-tag";
+      tag.textContent = `Option ${idx + 1} • ${platformNames[platform] || "Bio"}`;
 
-      card.innerHTML = `
-        <div class="result-meta">
-          <span class="result-tag">Option ${idx + 1} • ${platformNames[platform] || "Bio"}</span>
-          <span class="char-counter">${charCount} chars · ${wordCount} words</span>
-        </div>
-        <textarea class="result-text-area" rows="4" aria-label="Editable bio option ${idx + 1}"></textarea>
-        <div class="result-actions">
-          <button type="button" class="btn btn-secondary btn-sm btn-copy-bio">
-            <span aria-hidden="true">📋</span> Copy Bio
-          </button>
-          <button type="button" class="btn btn-secondary btn-sm btn-download-bio">
-            <span aria-hidden="true">💾</span> Save TXT
-          </button>
-        </div>
-      `;
+      const counter = document.createElement("span");
+      counter.className = "char-counter";
+      counter.textContent = `${item.charCount} chars · ${item.wordCount} words`;
 
-      // Use textContent / property for safe content injection
-      const textarea = card.querySelector("textarea");
-      textarea.value = text;
+      meta.appendChild(tag);
+      meta.appendChild(counter);
 
-      const counter = card.querySelector(".char-counter");
+      const textarea = document.createElement("textarea");
+      textarea.className = "result-text-area";
+      textarea.rows = 4;
+      textarea.setAttribute("aria-label", `Editable bio option ${idx + 1}`);
+      textarea.value = item.text; // Safe value assignment
+
       textarea.addEventListener("input", () => {
         const curChar = textarea.value.length;
         const curWord = textarea.value.split(/\s+/).filter(Boolean).length;
         counter.textContent = `${curChar} chars · ${curWord} words`;
       });
 
-      card.querySelector(".btn-copy-bio").addEventListener("click", () => {
+      const actions = document.createElement("div");
+      actions.className = "result-actions";
+
+      const btnCopy = document.createElement("button");
+      btnCopy.type = "button";
+      btnCopy.className = "btn btn-secondary btn-sm";
+      btnCopy.innerHTML = `<span aria-hidden="true">📋</span> Copy Bio`;
+      btnCopy.addEventListener("click", () => {
         copyTextToClipboard(textarea.value, "Bio copied to clipboard!");
       });
 
-      card.querySelector(".btn-download-bio").addEventListener("click", () => {
-        const safeName = name.toLowerCase().replace(/[^a-z0-9]/g, "-");
+      const btnDownload = document.createElement("button");
+      btnDownload.type = "button";
+      btnDownload.className = "btn btn-secondary btn-sm";
+      btnDownload.innerHTML = `<span aria-hidden="true">💾</span> Save TXT`;
+      btnDownload.addEventListener("click", () => {
+        const safeName = (name || "business").toLowerCase().replace(/[^a-z0-9]/g, "-");
         downloadTextFile(`${safeName}-bio-${idx + 1}.txt`, textarea.value);
       });
+
+      actions.appendChild(btnCopy);
+      actions.appendChild(btnDownload);
+
+      card.appendChild(meta);
+      card.appendChild(textarea);
+      card.appendChild(actions);
 
       resultsContainer.appendChild(card);
     });
@@ -708,7 +569,6 @@ function initBioTool() {
     generateBios();
   });
 
-  // Example Loader
   document.getElementById("btnLoadBioExample")?.addEventListener("click", () => {
     document.getElementById("bioBizName").value = "Karak & Co. Chai House";
     document.getElementById("bioNiche").value = "Traditional Tea & Bakery Cafe";
@@ -723,123 +583,111 @@ function initBioTool() {
 }
 
 /* ==========================================================================
-   PART 4: PRODUCT DESCRIPTION GENERATOR (Predefined Templates, No AI API)
+   PART 4: PRODUCT DESCRIPTION GENERATOR (Safe DOM, Zero XSS)
    ========================================================================== */
 
-function initProductDescTool() {
+export function initProductDescTool() {
   const form = document.getElementById("productDescForm");
   const resultsContainer = document.getElementById("productDescResults");
   if (!form || !resultsContainer) return;
 
   function generateProductDescription() {
-    const name = document.getElementById("prodName")?.value.trim();
-    const category = document.getElementById("prodCategory")?.value.trim();
-    const rawFeatures = document.getElementById("prodFeatures")?.value.trim();
-    const benefit = document.getElementById("prodBenefit")?.value.trim();
-    const priceOffer = document.getElementById("prodOffer")?.value.trim() || "";
-    const style = document.getElementById("prodStyle")?.value || "ecommerce";
+    const name = document.getElementById("prodName")?.value;
+    const category = document.getElementById("prodCategory")?.value;
+    const rawFeatures = document.getElementById("prodFeatures")?.value;
+    const benefit = document.getElementById("prodBenefit")?.value;
+    const priceOffer = document.getElementById("prodOffer")?.value;
+    const style = document.getElementById("prodStyle")?.value;
 
-    if (!name || !category || !rawFeatures || !benefit) {
-      showToast("Please enter Product Name, Category, Features, and Benefit.", "error");
+    const res = generateProductDescriptionOutputs({
+      name,
+      category,
+      rawFeatures,
+      benefit,
+      priceOffer,
+      style
+    });
+
+    if (!res.valid) {
+      showToast(res.error, "error");
       return;
     }
 
-    const featuresList = rawFeatures
-      .split(/[,;\n]+/)
-      .map(s => s.trim())
-      .filter(Boolean);
+    resultsContainer.innerHTML = "";
 
-    let output = {};
+    // Build DOM safely without raw user HTML interpolation (Zero XSS)
+    const card = document.createElement("div");
+    card.className = "result-card";
 
-    if (style === "ecommerce") {
-      output = {
-        title: `${name} — Premium ${category}`,
-        narrative: `Upgrade your daily routine with the all-new ${name}. Engineered specifically for those who appreciate dependable everyday quality, this ${category.toLowerCase()} standout ensures you ${benefit}. Thoughtfully designed to deliver lasting value and effortless convenience.`,
-        bullets: featuresList,
-        guarantee: priceOffer ? `Special Offer: ${priceOffer}` : "",
-        cta: "Order today and experience the difference!"
-      };
-    } else if (style === "story") {
-      output = {
-        title: `The Story Behind ${name}`,
-        narrative: `We created ${name} with a simple philosophy: everyday tools should be reliable, well-crafted, and a joy to use. Built to help you ${benefit}, every element of this ${category.toLowerCase()} piece is designed with care.`,
-        bullets: featuresList,
-        guarantee: priceOffer ? `Note: ${priceOffer}` : "",
-        cta: `Treat yourself to ${name} today.`
-      };
-    } else if (style === "social") {
-      output = {
-        title: `Say hello to your new favorite: ${name}! 🔥`,
-        narrative: `Upgrade your ${category.toLowerCase()}. The ${name} is officially available so you can ${benefit}. Check out why customers love it:`,
-        bullets: featuresList,
-        guarantee: priceOffer ? `⚡ Special: ${priceOffer}` : "",
-        cta: "⚡ Message or click the link to claim yours today!"
-      };
-    } else {
-      // Marketplace
-      output = {
-        title: `[FOR SALE] ${name} (${category})`,
-        narrative: `Up for sale: ${name}. Quality ${category.toLowerCase()} designed to ${benefit}.`,
-        bullets: featuresList,
-        guarantee: priceOffer ? `Price / Offer: ${priceOffer}` : "",
-        cta: "Available for pickup or dispatch. Message with inquiries."
-      };
-    }
+    const meta = document.createElement("div");
+    meta.className = "result-meta";
 
-    const bulletText = output.bullets.map(b => `• ${b}`).join("\n");
-    const plainText = `${output.title}
+    const tag = document.createElement("span");
+    tag.className = "result-tag";
+    tag.textContent = `${name.trim()} • ${style.toUpperCase()} Style`;
 
-${output.narrative}
+    const counter = document.createElement("span");
+    counter.className = "char-counter";
+    counter.textContent = `${res.charCount} chars · ${res.wordCount} words`;
 
-Key Highlights:
-${bulletText}${output.guarantee ? `\n\n${output.guarantee}` : ""}
+    meta.appendChild(tag);
+    meta.appendChild(counter);
 
-${output.cta}`;
+    const textarea = document.createElement("textarea");
+    textarea.id = "productDescTextarea";
+    textarea.className = "result-text-area";
+    textarea.rows = 8;
+    textarea.setAttribute("aria-label", "Editable product description");
+    textarea.value = res.plainText; // Safe value assignment
 
-    const htmlSnippet = `<h3>${output.title}</h3>
-<p>${output.narrative}</p>
-<ul>
-${output.bullets.map(b => `  <li>${b}</li>`).join("\n")}
-</ul>${output.guarantee ? `\n<p><strong>Note:</strong> ${output.guarantee}</p>` : ""}
-<p><em>${output.cta}</em></p>`;
+    textarea.addEventListener("input", () => {
+      const curChar = textarea.value.length;
+      const curWord = textarea.value.split(/\s+/).filter(Boolean).length;
+      counter.textContent = `${curChar} chars · ${curWord} words`;
+    });
 
-    resultsContainer.innerHTML = `
-      <div class="result-card">
-        <div class="result-meta">
-          <span class="result-tag">${name} • ${style.toUpperCase()} Style</span>
-          <span class="char-counter">${plainText.length} chars · ${plainText.split(/\s+/).filter(Boolean).length} words</span>
-        </div>
-        <textarea id="productDescTextarea" class="result-text-area" rows="8" aria-label="Editable product description"></textarea>
-        <div class="result-actions" style="flex-wrap: wrap;">
-          <button type="button" id="btnCopyProductDesc" class="btn btn-primary btn-sm">
-            <span aria-hidden="true">📋</span> Copy Description
-          </button>
-          <button type="button" id="btnCopyProductHtml" class="btn btn-secondary btn-sm">
-            <span aria-hidden="true">🌐</span> Copy HTML
-          </button>
-          <button type="button" id="btnDownloadProductTxt" class="btn btn-secondary btn-sm">
-            <span aria-hidden="true">💾</span> Save TXT
-          </button>
-        </div>
-      </div>
-    `;
+    const actions = document.createElement("div");
+    actions.className = "result-actions";
+    actions.style.flexWrap = "wrap";
 
-    const textarea = document.getElementById("productDescTextarea");
-    textarea.value = plainText;
-
-    document.getElementById("btnCopyProductDesc")?.addEventListener("click", () => {
+    const btnCopyDesc = document.createElement("button");
+    btnCopyDesc.type = "button";
+    btnCopyDesc.id = "btnCopyProductDesc";
+    btnCopyDesc.className = "btn btn-primary btn-sm";
+    btnCopyDesc.innerHTML = `<span aria-hidden="true">📋</span> Copy Description`;
+    btnCopyDesc.addEventListener("click", () => {
       copyTextToClipboard(textarea.value, "Product description copied to clipboard!");
     });
 
-    document.getElementById("btnCopyProductHtml")?.addEventListener("click", () => {
-      copyTextToClipboard(htmlSnippet, "HTML snippet copied to clipboard!");
+    const btnCopyHtml = document.createElement("button");
+    btnCopyHtml.type = "button";
+    btnCopyHtml.id = "btnCopyProductHtml";
+    btnCopyHtml.className = "btn btn-secondary btn-sm";
+    btnCopyHtml.innerHTML = `<span aria-hidden="true">🌐</span> Copy HTML`;
+    btnCopyHtml.addEventListener("click", () => {
+      // res.htmlSnippet has all user values safely escaped via escapeHtml()
+      copyTextToClipboard(res.htmlSnippet, "HTML snippet copied to clipboard!");
     });
 
-    document.getElementById("btnDownloadProductTxt")?.addEventListener("click", () => {
-      const safeName = name.toLowerCase().replace(/[^a-z0-9]/g, "-");
+    const btnDownloadTxt = document.createElement("button");
+    btnDownloadTxt.type = "button";
+    btnDownloadTxt.id = "btnDownloadProductTxt";
+    btnDownloadTxt.className = "btn btn-secondary btn-sm";
+    btnDownloadTxt.innerHTML = `<span aria-hidden="true">💾</span> Save TXT`;
+    btnDownloadTxt.addEventListener("click", () => {
+      const safeName = (name || "product").toLowerCase().replace(/[^a-z0-9]/g, "-");
       downloadTextFile(`${safeName}-description.txt`, textarea.value);
     });
 
+    actions.appendChild(btnCopyDesc);
+    actions.appendChild(btnCopyHtml);
+    actions.appendChild(btnDownloadTxt);
+
+    card.appendChild(meta);
+    card.appendChild(textarea);
+    card.appendChild(actions);
+
+    resultsContainer.appendChild(card);
     showToast("Generated product description!", "success");
   }
 
@@ -863,7 +711,7 @@ ${output.bullets.map(b => `  <li>${b}</li>`).join("\n")}
    PART 5: CONFIGURABLE CURRENCY INVOICE / RECEIPT CALCULATOR (PKR DEFAULT)
    ========================================================================== */
 
-function initInvoiceTool() {
+export function initInvoiceTool() {
   const itemsTbody = document.getElementById("invoiceItemsTableBody");
   const btnAddItem = document.getElementById("btnAddInvoiceItem");
   const currencySelect = document.getElementById("invCurrency");
@@ -878,7 +726,7 @@ function initInvoiceTool() {
 
   if (!itemsTbody) return;
 
-  // Automatically initialize with client's current date
+  // Initialize with client's current local date
   if (dateInput && !dateInput.value) {
     const today = new Date().toISOString().split("T")[0];
     dateInput.value = today;
@@ -889,80 +737,132 @@ function initInvoiceTool() {
     return selected?.dataset.symbol || "Rs. ";
   }
 
-  function formatMoney(amount) {
-    const sym = getCurrencySymbol();
-    const safeAmount = isNaN(amount) || amount < 0 ? 0 : amount;
-    return `${sym}${safeAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  function getCurrencyCode() {
+    return currencySelect?.value || "PKR";
   }
 
   function calculateTotals() {
-    let subtotal = 0;
+    const sym = getCurrencySymbol();
     const rows = itemsTbody.querySelectorAll("tr");
+    const rawItems = [];
+
     rows.forEach(row => {
-      const qtyRaw = parseFloat(row.querySelector(".inv-item-qty")?.value);
-      const priceRaw = parseFloat(row.querySelector(".inv-item-price")?.value);
-
-      const qty = isNaN(qtyRaw) || qtyRaw < 0 ? 0 : qtyRaw;
-      const price = isNaN(priceRaw) || priceRaw < 0 ? 0 : priceRaw;
-
-      const rowTotal = qty * price;
-      const rowTotalEl = row.querySelector(".inv-item-total");
-      if (rowTotalEl) rowTotalEl.textContent = formatMoney(rowTotal);
-      subtotal += rowTotal;
+      const desc = row.querySelector(".inv-item-desc")?.value || "";
+      const qty = row.querySelector(".inv-item-qty")?.value;
+      const price = row.querySelector(".inv-item-price")?.value;
+      rawItems.push({ desc, qty, price });
     });
 
-    let taxRate = parseFloat(taxRateInput?.value);
-    if (isNaN(taxRate) || taxRate < 0) taxRate = 0;
-    if (taxRate > 100) taxRate = 100;
+    const summary = calculateInvoiceSummary(
+      rawItems,
+      taxRateInput?.value,
+      discountInput?.value
+    );
 
-    let discount = parseFloat(discountInput?.value);
-    if (isNaN(discount) || discount < 0) discount = 0;
+    // Update row item totals
+    rows.forEach((row, i) => {
+      const rowTotalEl = row.querySelector(".inv-item-total");
+      if (rowTotalEl && summary.items[i]) {
+        rowTotalEl.textContent = formatCurrency(summary.items[i].total, sym);
+      }
+    });
 
-    const discountAmount = Math.min(subtotal, discount);
-    const taxableAmount = Math.max(0, subtotal - discountAmount);
-    const taxAmount = (taxableAmount * taxRate) / 100;
-    const grandTotal = taxableAmount + taxAmount;
+    if (subtotalEl) subtotalEl.textContent = formatCurrency(summary.subtotal, sym);
+    if (taxEl) taxEl.textContent = formatCurrency(summary.taxAmount, sym);
+    if (discountEl) discountEl.textContent = `-${formatCurrency(summary.discount, sym)}`;
+    if (grandTotalEl) grandTotalEl.textContent = formatCurrency(summary.grandTotal, sym);
 
-    if (subtotalEl) subtotalEl.textContent = formatMoney(subtotal);
-    if (taxEl) taxEl.textContent = formatMoney(taxAmount);
-    if (discountEl) discountEl.textContent = `-${formatMoney(discountAmount)}`;
-    if (grandTotalEl) grandTotalEl.textContent = formatMoney(grandTotal);
+    return summary;
   }
 
   function addRow(desc = "", qty = 1, price = 0) {
     const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>
-        <input type="text" class="form-control inv-item-desc" placeholder="Item description" style="min-height:42px; padding:4px 8px;" aria-label="Item description">
-      </td>
-      <td style="width: 70px;">
-        <input type="number" class="form-control inv-item-qty" value="${qty}" min="1" step="1" style="min-height:42px; padding:4px 8px; text-align:center;" aria-label="Quantity">
-      </td>
-      <td style="width: 100px;">
-        <input type="number" class="form-control inv-item-price" value="${price}" min="0" step="10" style="min-height:42px; padding:4px 8px; text-align:right;" aria-label="Unit price">
-      </td>
-      <td style="width: 90px; text-align: right; font-weight: 600;" class="inv-item-total">
-        ${formatMoney(qty * price)}
-      </td>
-      <td style="width: 48px; text-align: center;">
-        <button type="button" class="btn btn-secondary btn-delete-row" title="Remove item" aria-label="Remove item" style="min-height:42px; min-width:42px; padding:0; color: var(--accent-danger);">✕</button>
-      </td>
-    `;
 
-    const descInput = tr.querySelector(".inv-item-desc");
-    descInput.value = desc;
+    // td 1: Description
+    const tdDesc = document.createElement("td");
+    const inputDesc = document.createElement("input");
+    inputDesc.type = "text";
+    inputDesc.className = "form-control inv-item-desc";
+    inputDesc.placeholder = "Item description";
+    inputDesc.style.minHeight = "42px";
+    inputDesc.style.padding = "4px 8px";
+    inputDesc.setAttribute("aria-label", "Item description");
+    inputDesc.value = desc;
+    tdDesc.appendChild(inputDesc);
 
-    tr.querySelectorAll("input").forEach(inp => {
-      inp.addEventListener("input", calculateTotals);
-    });
+    // td 2: Quantity
+    const tdQty = document.createElement("td");
+    tdQty.style.width = "70px";
+    const inputQty = document.createElement("input");
+    inputQty.type = "number";
+    inputQty.className = "form-control inv-item-qty";
+    inputQty.min = "1";
+    inputQty.step = "1";
+    inputQty.style.minHeight = "42px";
+    inputQty.style.padding = "4px 8px";
+    inputQty.style.textAlign = "center";
+    inputQty.setAttribute("aria-label", "Quantity");
+    inputQty.value = String(qty);
+    tdQty.appendChild(inputQty);
 
-    tr.querySelector(".btn-delete-row")?.addEventListener("click", () => {
+    // td 3: Unit Price
+    const tdPrice = document.createElement("td");
+    tdPrice.style.width = "100px";
+    const inputPrice = document.createElement("input");
+    inputPrice.type = "number";
+    inputPrice.className = "form-control inv-item-price";
+    inputPrice.min = "0";
+    inputPrice.step = "10";
+    inputPrice.style.minHeight = "42px";
+    inputPrice.style.padding = "4px 8px";
+    inputPrice.style.textAlign = "right";
+    inputPrice.setAttribute("aria-label", "Unit price");
+    inputPrice.value = String(price);
+    tdPrice.appendChild(inputPrice);
+
+    // td 4: Row Total
+    const tdTotal = document.createElement("td");
+    tdTotal.style.width = "90px";
+    tdTotal.style.textAlign = "right";
+    tdTotal.style.fontWeight = "600";
+    tdTotal.className = "inv-item-total";
+    tdTotal.textContent = formatCurrency(validateQuantity(qty) * validatePrice(price), getCurrencySymbol());
+
+    // td 5: Delete button
+    const tdDel = document.createElement("td");
+    tdDel.style.width = "48px";
+    tdDel.style.textAlign = "center";
+    const btnDel = document.createElement("button");
+    btnDel.type = "button";
+    btnDel.className = "btn btn-secondary btn-delete-row";
+    btnDel.title = "Remove item";
+    btnDel.setAttribute("aria-label", "Remove item");
+    btnDel.style.minHeight = "42px";
+    btnDel.style.minWidth = "42px";
+    btnDel.style.padding = "0";
+    btnDel.style.color = "var(--accent-danger)";
+    btnDel.textContent = "✕";
+
+    btnDel.addEventListener("click", () => {
       if (itemsTbody.children.length > 1) {
         tr.remove();
         calculateTotals();
       } else {
         showToast("Invoice must contain at least 1 item", "error");
       }
+    });
+
+    tdDel.appendChild(btnDel);
+
+    tr.appendChild(tdDesc);
+    tr.appendChild(tdQty);
+    tr.appendChild(tdPrice);
+    tr.appendChild(tdTotal);
+    tr.appendChild(tdDel);
+
+    // Live recalculation on typing
+    tr.querySelectorAll("input").forEach(inp => {
+      inp.addEventListener("input", calculateTotals);
     });
 
     itemsTbody.appendChild(tr);
@@ -977,67 +877,46 @@ function initInvoiceTool() {
   discountInput?.addEventListener("input", calculateTotals);
   currencySelect?.addEventListener("change", calculateTotals);
 
-  // Generate plain text receipt slip
-  function generateTextReceipt() {
-    const bizName = document.getElementById("invBizName")?.value.trim() || "FreeBiz Services";
-    const bizPhone = document.getElementById("invBizContact")?.value.trim() || "";
-    const clientName = document.getElementById("invClientName")?.value.trim() || "Valued Customer";
-    const invNum = document.getElementById("invNumber")?.value.trim() || `REC-${Date.now().toString().slice(-4)}`;
-    const invDate = document.getElementById("invDate")?.value || new Date().toISOString().split("T")[0];
-    const notes = document.getElementById("invNotes")?.value.trim() || "";
-    const sym = getCurrencySymbol();
-
-    let lines = [];
-    lines.push(`========================================`);
-    lines.push(`             RECEIPT SLIP               `);
-    lines.push(`========================================`);
-    lines.push(`Merchant: ${bizName}`);
-    if (bizPhone) lines.push(`Contact:  ${bizPhone}`);
-    lines.push(`Receipt#: ${invNum}`);
-    lines.push(`Date:     ${invDate}`);
-    lines.push(`Client:   ${clientName}`);
-    lines.push(`Currency: ${currencySelect?.value || "PKR"}`);
-    lines.push(`----------------------------------------`);
-    lines.push(`ITEMS:`);
-
+  function getReceiptSlipText() {
     const rows = itemsTbody.querySelectorAll("tr");
+    const rawItems = [];
     rows.forEach(row => {
-      const desc = row.querySelector(".inv-item-desc")?.value.trim() || "Item";
-      const qty = parseFloat(row.querySelector(".inv-item-qty")?.value) || 1;
-      const price = parseFloat(row.querySelector(".inv-item-price")?.value) || 0;
-      const total = qty * price;
-      lines.push(` • ${desc} (x${qty} @ ${sym}${price.toFixed(2)}) = ${sym}${total.toFixed(2)}`);
+      const desc = row.querySelector(".inv-item-desc")?.value || "";
+      const qty = row.querySelector(".inv-item-qty")?.value;
+      const price = row.querySelector(".inv-item-price")?.value;
+      rawItems.push({ desc, qty, price });
     });
 
-    lines.push(`----------------------------------------`);
-    lines.push(`Subtotal:    ${subtotalEl?.textContent || "0.00"}`);
-    lines.push(`Discount:    ${discountEl?.textContent || "-0.00"}`);
-    lines.push(`Tax:         ${taxEl?.textContent || "0.00"}`);
-    lines.push(`GRAND TOTAL: ${grandTotalEl?.textContent || "0.00"}`);
-    lines.push(`----------------------------------------`);
-    if (notes) {
-      lines.push(`Notes: ${notes}`);
-    }
-    lines.push(`========================================`);
-    lines.push(`Customer receipt template. Not a tax invoice.`);
-    return lines.join("\n");
+    return generateReceiptTextSlip({
+      bizName: document.getElementById("invBizName")?.value,
+      bizContact: document.getElementById("invBizContact")?.value,
+      clientName: document.getElementById("invClientName")?.value,
+      invNumber: document.getElementById("invNumber")?.value,
+      invDate: document.getElementById("invDate")?.value,
+      notes: document.getElementById("invNotes")?.value,
+      currencyCode: getCurrencyCode(),
+      currencySymbol: getCurrencySymbol(),
+      items: rawItems,
+      taxRate: taxRateInput?.value,
+      discount: discountInput?.value
+    });
   }
 
   // Copy Receipt Text
   document.getElementById("btnCopyInvoiceText")?.addEventListener("click", () => {
-    const txt = generateTextReceipt();
+    const txt = getReceiptSlipText();
     copyTextToClipboard(txt, "Receipt slip copied to clipboard!");
   });
 
   // Download Receipt File
   document.getElementById("btnDownloadInvoiceTxt")?.addEventListener("click", () => {
-    const txt = generateTextReceipt();
+    const txt = getReceiptSlipText();
     const invNum = document.getElementById("invNumber")?.value.trim() || "receipt";
     const safeName = invNum.toLowerCase().replace(/[^a-z0-9]/g, "-");
     downloadTextFile(`${safeName}.txt`, txt);
   });
 
-  // Print Invoice / Save as PDF (Honest feedback)
+  // Print Invoice / Save as PDF
   document.getElementById("btnPrintInvoice")?.addEventListener("click", () => {
     showToast("Print dialog opened — select 'Save as PDF' to save.", "normal", 4000);
     window.print();
@@ -1069,7 +948,7 @@ function initInvoiceTool() {
    PART 6: MOBILE TESTING GUIDE & PERSISTENT CHECKLIST
    ========================================================================== */
 
-function initMobileTestingGuide() {
+export function initMobileTestingGuide() {
   const phoneQrCanvas = document.getElementById("phoneTestQrCanvas");
   const phoneUrlText = document.getElementById("phoneTestUrlText");
 
@@ -1088,11 +967,11 @@ function initMobileTestingGuide() {
 
   const checklistItems = document.querySelectorAll(".test-checkbox");
   checklistItems.forEach((cb, idx) => {
-    const saved = localStorage.getItem(`freebiz_check_${idx}`);
+    const saved = safeGetStorage(`freebiz_check_${idx}`);
     if (saved === "true") cb.checked = true;
 
     cb.addEventListener("change", () => {
-      localStorage.setItem(`freebiz_check_${idx}`, cb.checked ? "true" : "false");
+      safeSetStorage(`freebiz_check_${idx}`, cb.checked ? "true" : "false");
       updateChecklistProgress();
     });
   });
@@ -1115,7 +994,7 @@ function initMobileTestingGuide() {
   document.getElementById("btnResetChecklist")?.addEventListener("click", () => {
     checklistItems.forEach((cb, idx) => {
       cb.checked = false;
-      localStorage.removeItem(`freebiz_check_${idx}`);
+      safeRemoveStorage(`freebiz_check_${idx}`);
     });
     updateChecklistProgress();
     showToast("Checklist reset", "normal");
@@ -1128,7 +1007,7 @@ function initMobileTestingGuide() {
    PART 7: NAVIGATION CONTROLLER
    ========================================================================== */
 
-function initNavigation() {
+export function initNavigation() {
   const views = {
     qr: document.getElementById("qrToolView"),
     bio: document.getElementById("bioToolView"),
@@ -1183,11 +1062,13 @@ function initNavigation() {
 }
 
 // Global DOM Ready Initialization
-document.addEventListener("DOMContentLoaded", () => {
-  initNavigation();
-  initQRCodeTool();
-  initBioTool();
-  initProductDescTool();
-  initInvoiceTool();
-  initMobileTestingGuide();
-});
+if (typeof document !== "undefined") {
+  document.addEventListener("DOMContentLoaded", () => {
+    initNavigation();
+    initQRCodeTool();
+    initBioTool();
+    initProductDescTool();
+    initInvoiceTool();
+    initMobileTestingGuide();
+  });
+}

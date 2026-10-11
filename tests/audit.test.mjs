@@ -1,13 +1,42 @@
 /**
- * FreeBiz Tools — Automated Audit & Verification Suite
- * Tests QR generation/decoding, Wi-Fi escaping, vCard encoding, invoice math,
- * bio/product generators, and DOM ID integrity.
+ * FreeBiz Tools — Production Automated Test & Audit Suite
+ * 
+ * Directly imports and verifies the REAL production modules in src/core.js,
+ * testing QR generation/decoding with jsQR, XSS escaping, dangerous input handling,
+ * invoice arithmetic precision, bio/product template processing, and DOM ID integrity.
  */
 
 import QRCode from "qrcode";
 import jsQR from "jsqr";
 import fs from "fs";
 import path from "path";
+
+// Direct import of REAL PRODUCTION CODE
+import {
+  escapeHtml,
+  validateAndFormatUrl,
+  validatePhoneNumber,
+  formatWhatsAppPayload,
+  escapeWifiField,
+  formatWifiPayload,
+  escapeVcardField,
+  formatVcardPayload,
+  isValidHexColor,
+  getLuminance,
+  getContrastRatio,
+  validateQuantity,
+  validatePrice,
+  validateTaxRate,
+  validateDiscount,
+  calculateInvoiceSummary,
+  formatCurrency,
+  generateReceiptTextSlip,
+  generateBioOutputs,
+  generateProductDescriptionOutputs,
+  safeGetStorage,
+  safeSetStorage,
+  safeRemoveStorage
+} from "../src/core.js";
 
 let passedCount = 0;
 let failedCount = 0;
@@ -23,10 +52,10 @@ function assert(condition, message) {
 }
 
 console.log("\n=======================================================");
-console.log("FREEBIZ TOOLS — COMPREHENSIVE AUTOMATED TEST SUITE");
+console.log("FREEBIZ TOOLS — PRODUCTION CODE VERIFICATION SUITE");
 console.log("=======================================================\n");
 
-// Helper to render and decode QR code
+// Helper to render QR code and decode using jsQR
 async function decodeQR(payload, ec = "M") {
   const qrData = QRCode.create(payload, { errorCorrectionLevel: ec });
   const size = qrData.modules.size;
@@ -59,131 +88,331 @@ async function decodeQR(payload, ec = "M") {
 }
 
 // -------------------------------------------------------------
-// TEST SUITE 1: QR Code Generation & Decoding via jsQR
+// TEST SUITE 1: XSS Security & HTML Escaping (Real Production Code)
 // -------------------------------------------------------------
-console.log("TEST SUITE 1: QR Generation & jsQR Decoding Compatibility");
+console.log("TEST SUITE 1: XSS Security & Dangerous Input Handling");
 
-const qrCases = [
+const xssPayloads = [
+  "<script>alert(1)</script>",
+  '<img src=x onerror="alert(1)">',
+  "';alert(String.fromCharCode(88,83,83))//",
+  "<svg/onload=alert('XSS')>",
+  '"><script>alert(document.cookie)</script>'
+];
+
+for (const p of xssPayloads) {
+  const escaped = escapeHtml(p);
+  assert(!escaped.includes("<") && !escaped.includes(">"), `HTML tags escaped: ${p.slice(0, 25)}...`);
+  assert(!escaped.includes('"') || escaped.includes("&quot;"), "Quotes safely converted to HTML entities");
+}
+
+assert(escapeHtml(null) === "", "Null safely converts to empty string");
+assert(escapeHtml(undefined) === "", "Undefined safely converts to empty string");
+assert(escapeHtml("Tom & Jerry") === "Tom &amp; Jerry", "Ampersands escaped correctly");
+assert(escapeHtml("Urdu Text: چائے اور پراٹھا") === "Urdu Text: چائے اور پراٹھا", "Unicode and Urdu text preserved without distortion");
+
+// -------------------------------------------------------------
+// TEST SUITE 2: URL Validation & Scheme Security (Real Production Code)
+// -------------------------------------------------------------
+console.log("\nTEST SUITE 2: URL Validation & Dangerous Scheme Rejection");
+
+const dangerousUrls = [
+  "javascript:alert(1)",
+  "JAVASCRIPT:alert('hack')",
+  "data:text/html,<script>alert(1)</script>",
+  "vbscript:msgbox(1)",
+  "file:///etc/passwd"
+];
+
+for (const bad of dangerousUrls) {
+  const res = validateAndFormatUrl(bad);
+  assert(res.valid === false && res.url === null, `Rejected dangerous scheme: ${bad.slice(0, 25)}`);
+}
+
+const validUrls = [
+  { in: "https://example.com/shop", out: "https://example.com/shop" },
+  { in: "http://mybusiness.pk", out: "http://mybusiness.pk/" },
+  { in: "store.online.pk/catalog?item=12", out: "https://store.online.pk/catalog?item=12" }
+];
+
+for (const good of validUrls) {
+  const res = validateAndFormatUrl(good.in);
+  assert(res.valid === true && res.url === good.out, `Normalized valid URL: ${good.in} -> ${res.url}`);
+}
+
+assert(validateAndFormatUrl("").valid === false, "Empty URL input rejected cleanly");
+assert(validateAndFormatUrl("   ").valid === false, "Whitespace-only URL input rejected cleanly");
+
+// -------------------------------------------------------------
+// TEST SUITE 3: Phone & WhatsApp Validation (Real Production Code)
+// -------------------------------------------------------------
+console.log("\nTEST SUITE 3: Phone & WhatsApp International Formatting");
+
+const phoneCases = [
+  { in: "+92 300 1234567", expected: "+923001234567", valid: true },
+  { in: "(021) 3456-7890", expected: "02134567890", valid: true },
+  { in: "+1-800-555-0199", expected: "+18005550199", valid: true },
+  { in: "123", expected: null, valid: false }, // too short
+  { in: "abc-def-ghij", expected: null, valid: false } // letters
+];
+
+for (const pc of phoneCases) {
+  const res = validatePhoneNumber(pc.in);
+  assert(res.valid === pc.valid, `Phone validation '${pc.in}': valid=${res.valid}`);
+  if (pc.valid) {
+    assert(res.phone === pc.expected, `Phone normalized cleanly to ${res.phone}`);
+  }
+}
+
+// WhatsApp payload encoding
+const wa1 = formatWhatsAppPayload("923001234567", "Hello & Welcome! Price?");
+assert(wa1.valid === true, "WhatsApp payload valid with country code");
+assert(wa1.payload === "https://wa.me/923001234567?text=Hello%20%26%20Welcome!%20Price%3F", "WhatsApp message URL-encoded accurately");
+
+const waNoMsg = formatWhatsAppPayload("+92-300-1234567", "");
+assert(waNoMsg.payload === "https://wa.me/923001234567", "WhatsApp without message outputs clean direct link");
+
+const waInvalid = formatWhatsAppPayload("123");
+assert(waInvalid.valid === false, "WhatsApp with invalid short number rejected");
+
+// -------------------------------------------------------------
+// TEST SUITE 4: Wi-Fi MECARD Escaping & Open Networks (Real Production Code)
+// -------------------------------------------------------------
+console.log("\nTEST SUITE 4: Wi-Fi MECARD Escaping & Open Networks");
+
+const specialSsid = 'Shop;WiFi,2.4:"Corner"\\Back';
+const wifiEscaped = escapeWifiField(specialSsid);
+assert(wifiEscaped === 'Shop\\;WiFi\\,2.4\\:\\"Corner\\"\\\\Back', "All 5 MECARD characters (\\, ;, ,, :, \") escaped with backslash");
+
+// Standard WPA Wi-Fi
+const wifiWpa = formatWifiPayload({
+  ssid: specialSsid,
+  password: 'Pass;123"Secret',
+  encryption: "WPA"
+});
+assert(wifiWpa.valid === true, "Wi-Fi WPA payload valid");
+assert(wifiWpa.payload.includes("P:Pass\\;123\\\"Secret"), "Password escaped inside payload");
+
+// Open Network (nopass) must NOT require or contain password
+const wifiOpen = formatWifiPayload({
+  ssid: "Airport_Free_WiFi",
+  encryption: "nopass"
+});
+assert(wifiOpen.valid === true, "Open Wi-Fi network valid");
+assert(wifiOpen.payload === "WIFI:T:nopass;S:Airport_Free_WiFi;;", "Open Wi-Fi has T:nopass and no P: parameter");
+
+// -------------------------------------------------------------
+// TEST SUITE 5: vCard 3.0 Encoding (Real Production Code)
+// -------------------------------------------------------------
+console.log("\nTEST SUITE 5: vCard 3.0 Formatting & Escaping");
+
+const vcardRes = formatVcardPayload({
+  name: "Tariq Mahmood",
+  org: "Al-Rehman Graphics; Printing, Ltd.",
+  tel: "+92 300 1234567",
+  email: "contact@alrehman.pk",
+  title: "Managing Partner"
+});
+assert(vcardRes.valid === true, "vCard payload valid");
+assert(vcardRes.payload.includes("FN:Tariq Mahmood"), "Formatted Name FN included");
+assert(vcardRes.payload.includes("N:Mahmood;Tariq;;;"), "Structured Name N (Last;First) included");
+assert(vcardRes.payload.includes("ORG:Al-Rehman Graphics\\; Printing\\, Ltd."), "Special characters in ORG escaped");
+assert(vcardRes.payload.includes("TEL;TYPE=CELL,VOICE:+92 300 1234567"), "Telephone included");
+assert(vcardRes.payload.includes("END:VCARD"), "vCard ends correctly");
+
+// -------------------------------------------------------------
+// TEST SUITE 6: Full QR Scan & Decode Verification (jsQR)
+// -------------------------------------------------------------
+console.log("\nTEST SUITE 6: QR Generation & jsQR Decoding Roundtrip");
+
+const payloadsToTest = [
   { name: "Website URL", payload: "https://example.com/store" },
   { name: "Phone Call", payload: "tel:+923001234567" },
-  { name: "WhatsApp with message", payload: "https://wa.me/923001234567?text=Assalam-o-Alaikum%20Price%20inquiry" },
-  { name: "Wi-Fi WPA Network", payload: "WIFI:T:WPA;S:MyStore_Guest;P:SecretPass2026;;" },
-  { name: "Wi-Fi Open Network", payload: "WIFI:T:nopass;S:Public_Mall_WiFi;;" },
-  { name: "vCard 3.0 Contact", payload: "BEGIN:VCARD\nVERSION:3.0\nFN:Tariq Mahmood\nORG:Al-Rehman Graphics\nTEL:+923001234567\nEND:VCARD" },
-  { name: "Plain Text", payload: "FreeBiz Tools: 100% Client-side and private." }
+  { name: "WhatsApp with message", payload: wa1.payload },
+  { name: "Wi-Fi WPA Network", payload: wifiWpa.payload },
+  { name: "Wi-Fi Open Network", payload: wifiOpen.payload },
+  { name: "vCard 3.0", payload: vcardRes.payload },
+  { name: "Plain Text Unicode", payload: "FreeBiz Tools: 100% Client-Side. مفت بزنس ٹولز" }
 ];
 
-for (const tc of qrCases) {
+for (const pt of payloadsToTest) {
   for (const ec of ["L", "M", "Q", "H"]) {
-    const decoded = await decodeQR(tc.payload, ec);
-    assert(decoded === tc.payload, `${tc.name} at EC Level ${ec}`);
+    const decoded = await decodeQR(pt.payload, ec);
+    assert(decoded === pt.payload, `${pt.name} at EC Level ${ec} matches input byte-for-byte`);
   }
 }
 
 // -------------------------------------------------------------
-// TEST SUITE 2: Wi-Fi Special Character MECARD Escaping
+// TEST SUITE 7: Color Contrast & WCAG 2.1 (Real Production Code)
 // -------------------------------------------------------------
-console.log("\nTEST SUITE 2: Wi-Fi String Escaping Standard");
+console.log("\nTEST SUITE 7: Color Contrast & WCAG 2.1 Thresholds");
 
-function escapeWifi(str) {
-  if (!str) return "";
-  return str.replace(/([\\;,:"'])/g, "\\$1");
-}
+assert(isValidHexColor("#0f172a") === true, "#0f172a is valid hex color");
+assert(isValidHexColor("#ffffff") === true, "#ffffff is valid hex color");
+assert(isValidHexColor("red") === false, "Named color rejected by hex validator");
+assert(isValidHexColor("#12345") === false, "5-char hex rejected");
 
-const wifiInput = 'Store;WiFi,Main:2.4"Back\\slash';
-const escapedWifi = escapeWifi(wifiInput);
-assert(escapedWifi === 'Store\\;WiFi\\,Main\\:2.4\\"Back\\\\slash', "Special characters (\\, ;, ,, :, \") escaped with backslash");
+const crHigh = getContrastRatio("#0f172a", "#ffffff");
+assert(crHigh > 10, `Dark Charcoal on White contrast ratio is ${crHigh.toFixed(2)}:1 (Passes >= 3:1)`);
 
-const fullWifiPayload = `WIFI:T:WPA;S:${escapedWifi};P:MyPass\\;123;;`;
-const decodedWifi = await decodeQR(fullWifiPayload, "M");
-assert(decodedWifi === fullWifiPayload, "Escaped Wi-Fi string generates and scans perfectly");
+const crLow = getContrastRatio("#fef3c7", "#ffffff");
+assert(crLow < 3, `Light Cream on White contrast ratio is ${crLow.toFixed(2)}:1 (Fails < 3:1, triggers warning)`);
 
 // -------------------------------------------------------------
-// TEST SUITE 3: Color Contrast Ratio & WCAG Checking
+// TEST SUITE 8: Invoice Mathematics & Precision (Real Production Code)
 // -------------------------------------------------------------
-console.log("\nTEST SUITE 3: Color Contrast Ratio Calculation");
+console.log("\nTEST SUITE 8: Invoice Validation & Arithmetic Precision");
 
-function getLuminance(hex) {
-  const clean = hex.replace("#", "");
-  const num = parseInt(clean, 16);
-  const r = (num >> 16) & 255;
-  const g = (num >> 8) & 255;
-  const b = num & 255;
+// Quantity tests
+assert(validateQuantity(5) === 5, "Integer 5 validated");
+assert(validateQuantity("3") === 3, "Numeric string '3' converted to 3");
+assert(validateQuantity(2.8) === 2, "Float 2.8 truncated to positive integer 2");
+assert(validateQuantity(0) === 0, "Zero quantity rejected as 0");
+assert(validateQuantity(-4) === 0, "Negative quantity clamped to 0");
+assert(validateQuantity(NaN) === 0, "NaN quantity clamped to 0");
+assert(validateQuantity(Infinity) === 0, "Infinity quantity clamped to 0");
+assert(validateQuantity(10000000) === 1000000, "Excessive quantity capped to 1,000,000");
 
-  const [rs, gs, bs] = [r, g, b].map(c => {
-    const s = c / 255;
-    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
-  });
-  return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
-}
+// Price tests
+assert(validatePrice(150.50) === 150.50, "Decimal price 150.50 validated");
+assert(validatePrice("24.99") === 24.99, "Price string '24.99' validated");
+assert(validatePrice(-10) === 0, "Negative price clamped to 0");
+assert(validatePrice(NaN) === 0, "NaN price clamped to 0");
+assert(validatePrice(Infinity) === 0, "Infinity price clamped to 0");
 
-function getContrast(h1, h2) {
-  const l1 = getLuminance(h1);
-  const l2 = getLuminance(h2);
-  return (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
-}
+// Tax rate tests
+assert(validateTaxRate(5) === 5, "5% Tax rate validated");
+assert(validateTaxRate(0) === 0, "0% Tax rate validated");
+assert(validateTaxRate(-2) === 0, "Negative tax rate clamped to 0");
+assert(validateTaxRate(150) === 100, "Tax rate above 100% capped at 100%");
 
-const blackOnWhite = getContrast("#0f172a", "#ffffff");
-assert(blackOnWhite > 10, `Dark Charcoal on White contrast ratio is ${blackOnWhite.toFixed(2)}:1 (Passes >= 3:1)`);
+// Discount limits
+assert(validateDiscount(500, 1000) === 500, "Valid discount accepted");
+assert(validateDiscount(1500, 1000) === 1000, "Discount capped at subtotal (cannot exceed)");
+assert(validateDiscount(-50, 1000) === 0, "Negative discount clamped to 0");
 
-const yellowOnWhite = getContrast("#fef08a", "#ffffff");
-assert(yellowOnWhite < 3, `Light Yellow on White contrast ratio is ${yellowOnWhite.toFixed(2)}:1 (Fails < 3:1, triggers warning)`);
-
-// -------------------------------------------------------------
-// TEST SUITE 4: Invoice Calculations & PKR Formatting
-// -------------------------------------------------------------
-console.log("\nTEST SUITE 4: Invoice Calculations & Precision");
-
-function calculateInvoice(items, taxRateRaw, discountRaw, currencySym = "Rs. ") {
-  let subtotal = 0;
-  for (const it of items) {
-    const q = isNaN(it.qty) || it.qty < 0 ? 0 : it.qty;
-    const p = isNaN(it.price) || it.price < 0 ? 0 : it.price;
-    subtotal += q * p;
-  }
-
-  let taxRate = isNaN(taxRateRaw) || taxRateRaw < 0 ? 0 : taxRateRaw;
-  if (taxRate > 100) taxRate = 100;
-
-  let discount = isNaN(discountRaw) || discountRaw < 0 ? 0 : discountRaw;
-  const discountAmount = Math.min(subtotal, discount);
-  const taxableAmount = Math.max(0, subtotal - discountAmount);
-  const taxAmount = (taxableAmount * taxRate) / 100;
-  const grandTotal = taxableAmount + taxAmount;
-
-  return { subtotal, discountAmount, taxAmount, grandTotal };
-}
-
-// Case 1: Standard line items (PKR)
+// Real Line Items Case 1: Standard Pakistani Business Order (PKR)
 const items1 = [
-  { qty: 2, price: 1800 }, // 3600
-  { qty: 1, price: 2200 }, // 2200
-  { qty: 1, price: 7500 }  // 7500
+  { desc: "Flex Banner Printing (10x4 ft)", qty: 2, price: 1800 }, // 3600
+  { desc: "Visiting Cards (1000 Pcs)", qty: 1, price: 2200 },       // 2200
+  { desc: "Social Media Post Kit", qty: 1, price: 7500 }            // 7500
 ];
-const inv1 = calculateInvoice(items1, 0, 0);
+const inv1 = calculateInvoiceSummary(items1, 0, 0);
 assert(inv1.subtotal === 13300, "Subtotal: Rs. 13,300");
+assert(inv1.discount === 0, "Discount: Rs. 0");
+assert(inv1.taxAmount === 0, "Tax: Rs. 0");
 assert(inv1.grandTotal === 13300, "Grand total with 0% tax: Rs. 13,300");
 
 // Case 2: 5% Tax and 300 Discount
-const inv2 = calculateInvoice(items1, 5, 300);
-assert(inv2.discountAmount === 300, "Discount capped accurately: Rs. 300");
+const inv2 = calculateInvoiceSummary(items1, 5, 300);
+assert(inv2.discount === 300, "Discount: Rs. 300");
+assert(inv2.taxableAmount === 13000, "Taxable amount: Rs. 13,000");
 assert(inv2.taxAmount === 650, "5% Tax on Rs. 13,000 is Rs. 650");
 assert(inv2.grandTotal === 13650, "Grand total with discount + tax: Rs. 13,650");
+assert(inv2.grandTotal === inv2.taxableAmount + inv2.taxAmount, "Mathematical consistency guaranteed");
 
-// Case 3: Discount greater than subtotal (must not result in negative invoice)
-const inv3 = calculateInvoice(items1, 0, 20000);
-assert(inv3.discountAmount === 13300, "Discount capped at subtotal (cannot be negative)");
-assert(inv3.grandTotal === 0, "Grand total clamped at 0");
+// Case 3: Discount exceeds subtotal -> grand total clamped to 0
+const inv3 = calculateInvoiceSummary(items1, 5, 50000);
+assert(inv3.discount === 13300, "Discount strictly capped at subtotal");
+assert(inv3.taxableAmount === 0, "Taxable amount is 0");
+assert(inv3.grandTotal === 0, "Grand total clamped at 0 (never negative)");
 
-// Case 4: Negative price or qty protection
-const itemsBad = [{ qty: -5, price: 100 }, { qty: 2, price: -50 }];
-const invBad = calculateInvoice(itemsBad, 0, 0);
-assert(invBad.subtotal === 0, "Negative price/quantity clamped to 0 safely");
+// Case 4: Decimal prices and cent rounding
+const itemsDec = [
+  { desc: "Single Item A", qty: 3, price: 19.99 }, // 59.97
+  { desc: "Single Item B", qty: 1, price: 0.05 }   // 0.05
+];
+const invDec = calculateInvoiceSummary(itemsDec, 8.25, 10.00);
+assert(invDec.subtotal === 60.02, `Subtotal: ${invDec.subtotal}`);
+assert(invDec.discount === 10.00, `Discount: ${invDec.discount}`);
+assert(invDec.taxableAmount === 50.02, `Taxable: ${invDec.taxableAmount}`);
+assert(invDec.taxAmount === 4.13, `Tax amount: ${invDec.taxAmount}`);
+assert(invDec.grandTotal === 54.15, `Grand total: ${invDec.grandTotal}`);
+
+// Receipt slip text generation
+const slip = generateReceiptTextSlip({
+  bizName: "Al-Rehman Graphics",
+  bizContact: "+92 300 1234567",
+  clientName: "Tariq Mahmood",
+  invNumber: "REC-2026-081",
+  currencyCode: "PKR",
+  currencySymbol: "Rs. ",
+  items: items1,
+  taxRate: 5,
+  discount: 300
+});
+assert(slip.includes("Merchant: Al-Rehman Graphics"), "Merchant name in receipt slip");
+assert(slip.includes("Receipt#: REC-2026-081"), "Receipt number in slip");
+assert(slip.includes("Subtotal:    Rs. 13,300.00"), "Receipt subtotal matches calculator");
+assert(slip.includes("Discount:    -Rs. 300.00"), "Receipt discount matches calculator");
+assert(slip.includes("Tax (5%):   Rs. 650.00"), "Receipt tax matches calculator");
+assert(slip.includes("GRAND TOTAL: Rs. 13,650.00"), "Receipt grand total matches calculator");
 
 // -------------------------------------------------------------
-// TEST SUITE 5: DOM ID Integrity between HTML and JS
+// TEST SUITE 9: Product Description Generation & Safe HTML Output
 // -------------------------------------------------------------
-console.log("\nTEST SUITE 5: HTML vs JavaScript Element ID Cross-Check");
+console.log("\nTEST SUITE 9: Product Description Generator & Escaped HTML");
+
+const prodRes = generateProductDescriptionOutputs({
+  name: "EcoGrip <Shears>",
+  category: "Gardening & Tools",
+  rawFeatures: "SK5 Steel, Anti-Rust, Grip > Rubber",
+  benefit: "cut branches with 'zero' effort",
+  priceOffer: "COD Available & Free Delivery",
+  style: "ecommerce"
+});
+
+assert(prodRes.valid === true, "Product description generated");
+assert(prodRes.plainText.includes("EcoGrip <Shears>"), "Plain text retains readable characters");
+// Check HTML snippet safety
+assert(!prodRes.htmlSnippet.includes("<Shears>"), "Unescaped <Shears> eliminated from HTML snippet");
+assert(prodRes.htmlSnippet.includes("EcoGrip &lt;Shears&gt;"), "Product name escaped in HTML snippet");
+assert(prodRes.htmlSnippet.includes("Grip &gt; Rubber"), "Bullet feature escaped in HTML snippet");
+assert(prodRes.htmlSnippet.includes("&apos;zero&apos;") || prodRes.htmlSnippet.includes("&#39;zero&#39;"), "Quotes in benefit escaped in HTML snippet");
+
+// Empty input handling
+const prodEmpty = generateProductDescriptionOutputs({ name: "" });
+assert(prodEmpty.valid === false, "Empty product inputs safely rejected with error message");
+
+// -------------------------------------------------------------
+// TEST SUITE 10: Business Bio Generation (Real Production Code)
+// -------------------------------------------------------------
+console.log("\nTEST SUITE 10: Business Bio Generator");
+
+const bioRes = generateBioOutputs({
+  name: "Karak & Co.",
+  niche: "Chai & Snacks",
+  benefit: "hot fresh matka chai",
+  location: "Lahore",
+  tone: "friendly",
+  platform: "instagram"
+});
+
+assert(bioRes.valid === true, "Bio generated successfully");
+assert(bioRes.results.length === 3, "Generated 3 distinct bio drafts");
+assert(bioRes.results[0].text.includes("Karak & Co."), "Business name substituted into template");
+assert(bioRes.results[0].text.includes("hot fresh matka chai"), "Benefit substituted into template");
+assert(bioRes.results[0].charCount > 20, "Character count computed");
+assert(bioRes.results[0].wordCount > 3, "Word count computed");
+
+// Empty bio inputs
+const bioEmpty = generateBioOutputs({ name: "" });
+assert(bioEmpty.valid === false, "Empty bio inputs safely rejected with error message");
+
+// -------------------------------------------------------------
+// TEST SUITE 11: Safe Storage Handling (Graceful Degradation)
+// -------------------------------------------------------------
+console.log("\nTEST SUITE 11: Storage Safety Wrappers");
+
+// In Node environment without window.localStorage, safe helpers must not throw
+assert(safeGetStorage("test_key") === null, "safeGetStorage gracefully returns null outside browser");
+assert(safeSetStorage("test_key", "val") === false, "safeSetStorage gracefully returns false without throwing");
+assert(safeRemoveStorage("test_key") === false, "safeRemoveStorage gracefully returns false without throwing");
+
+// -------------------------------------------------------------
+// TEST SUITE 12: DOM ID Integrity between HTML and JS
+// -------------------------------------------------------------
+console.log("\nTEST SUITE 12: HTML vs JavaScript Element ID Cross-Check");
 
 const htmlContent = fs.readFileSync(path.resolve("index.html"), "utf8");
 const jsContent = fs.readFileSync(path.resolve("script.js"), "utf8");
@@ -198,7 +427,6 @@ while ((match = idRegex.exec(jsContent)) !== null) {
 let missingIds = [];
 for (const id of jsIds) {
   if (!htmlContent.includes(`id="${id}"`) && !htmlContent.includes(`id='${id}'`)) {
-    // If dynamically created in JS, check that
     if (!jsContent.includes(`id="${id}"`)) {
       missingIds.push(id);
     }
@@ -211,7 +439,7 @@ if (missingIds.length > 0) {
 }
 
 // -------------------------------------------------------------
-// SUMMARY
+// SUMMARY & EXIT
 // -------------------------------------------------------------
 console.log("\n=======================================================");
 console.log(`TOTAL TESTS: ${passedCount + failedCount} | PASSED: ${passedCount} | FAILED: ${failedCount}`);

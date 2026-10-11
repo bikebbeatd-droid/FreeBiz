@@ -10,6 +10,8 @@
     <meta property="og:description" content="Free, private, mobile-first business utilities that run 100% locally in your browser. Generate custom QR codes, business bios, product descriptions, and instant receipts with zero logins, fees, or AI APIs." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="FreeBiz Tools — 100% Free Local Business Utilities" />
+    <meta name="twitter:description" content="Free, private, mobile-first business utilities that run 100% locally in your browser." />
     <!-- Inline SVG Favicon -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232563eb'/%3E%3Cpath d='M18 6L9 18h6l-2 8 9-12h-6l2-8z' fill='white'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="/style.css" />
@@ -25,7 +27,7 @@
         </a>
 
         <!-- Desktop & Tablet Navigation Tabs -->
-        <nav class="desktop-nav" aria-label="Tool selection">
+        <nav class="desktop-nav" aria-label="Desktop Tool Selection">
           <button type="button" class="nav-link active" data-tab="qr">
             <span aria-hidden="true">🔲</span> QR Codes
           </button>
@@ -111,21 +113,22 @@
               <!-- Type 1: Website URL -->
               <div id="qrFieldsUrl" class="form-group">
                 <label for="qrUrlInput" class="form-label">
-                  Website or Profile Link <span class="helper">(e.g. your website, Google Maps, catalog)</span>
+                  Website or Profile Link <span class="helper">(HTTP/HTTPS websites only)</span>
                 </label>
                 <input
                   type="text"
                   id="qrUrlInput"
                   class="form-control"
-                  placeholder="e.g. https://yourbusiness.com or yourbusiness.com"
+                  placeholder="e.g. yourbusiness.com or https://example.com"
                   autocomplete="off"
                 />
+                <div id="qrUrlError" class="field-error-msg" style="display: none;" role="alert"></div>
               </div>
 
               <!-- Type 2: Phone Call -->
               <div id="qrFieldsPhone" class="form-group" style="display: none;">
                 <label for="qrPhoneInput" class="form-label">
-                  Phone Number to Call <span class="helper">(with country code)</span>
+                  Phone Number to Call <span class="helper">(International format with country code)</span>
                 </label>
                 <input
                   type="tel"
@@ -133,13 +136,14 @@
                   class="form-control"
                   placeholder="e.g. +92 300 1234567 or +1 555 123 4567"
                 />
+                <div id="qrPhoneError" class="field-error-msg" style="display: none;" role="alert"></div>
               </div>
 
               <!-- Type 3: WhatsApp Direct Message -->
               <div id="qrFieldsWhatsapp" style="display: none;">
                 <div class="form-group">
                   <label for="qrWaPhone" class="form-label">
-                    WhatsApp Number <span class="helper">(with country code, digits only)</span>
+                    WhatsApp Number <span class="helper">(Include country code, digits only)</span>
                   </label>
                   <input
                     type="tel"
@@ -147,14 +151,15 @@
                     class="form-control"
                     placeholder="e.g. 923001234567 or 15551234567"
                   />
+                  <div id="qrWaError" class="field-error-msg" style="display: none;" role="alert"></div>
                 </div>
                 <div class="form-group">
-                  <label for="qrWaMsg" class="form-label">Pre-filled Starter Message <span class="helper">(Optional)</span></label>
+                  <label for="qrWaMsg" class="form-label">Pre-filled Starter Message <span class="helper">(Supports English, Urdu, Unicode)</span></label>
                   <input
                     type="text"
                     id="qrWaMsg"
                     class="form-control"
-                    placeholder="e.g. Hello! I would like to inquire about your services."
+                    placeholder="e.g. السلام علیکم! Inquiring about catalog prices."
                   />
                 </div>
               </div>
@@ -163,13 +168,14 @@
               <div id="qrFieldsWifi" style="display: none;">
                 <div class="form-row two-col">
                   <div class="form-group">
-                    <label for="qrWifiSsid" class="form-label">Network Name (SSID)</label>
+                    <label for="qrWifiSsid" class="form-label">Network Name (SSID) <span class="helper">(Required)</span></label>
                     <input
                       type="text"
                       id="qrWifiSsid"
                       class="form-control"
-                      placeholder="e.g. MyShop_Guest_WiFi"
+                      placeholder="e.g. MyStore_Guest_WiFi"
                     />
+                    <div id="qrWifiError" class="field-error-msg" style="display: none;" role="alert"></div>
                   </div>
                   <div class="form-group" id="qrWifiPassGroup">
                     <label for="qrWifiPass" class="form-label">Password</label>
@@ -185,8 +191,8 @@
                   <div class="form-group">
                     <label for="qrWifiEnc" class="form-label">Security Type</label>
                     <select id="qrWifiEnc" class="form-control">
-                      <option value="WPA" selected>WPA / WPA2 (Most common)</option>
-                      <option value="WEP">WEP</option>
+                      <option value="WPA" selected>WPA / WPA2 / WPA3 (Standard)</option>
+                      <option value="WEP">WEP (Legacy)</option>
                       <option value="nopass">None (Open Network)</option>
                     </select>
                   </div>
@@ -203,8 +209,9 @@
               <div id="qrFieldsVcard" style="display: none;">
                 <div class="form-row two-col">
                   <div class="form-group">
-                    <label for="qrCardName" class="form-label">Full Name</label>
+                    <label for="qrCardName" class="form-label">Full Name <span class="helper">(Required)</span></label>
                     <input type="text" id="qrCardName" class="form-control" placeholder="e.g. Tariq Mahmood" />
+                    <div id="qrVcardError" class="field-error-msg" style="display: none;" role="alert"></div>
                   </div>
                   <div class="form-group">
                     <label for="qrCardOrg" class="form-label">Company / Brand</label>
@@ -310,7 +317,7 @@
 
                 <div id="qrContrastNotice" class="notice-box notice-warning" style="display: none;" role="alert">
                   <span aria-hidden="true">⚠️</span>
-                  <span>Low contrast: Dark pattern on light background scans most reliably. Please increase color contrast.</span>
+                  <span>Low contrast: Selected pattern and background colors have a contrast ratio under 3:1. Phone cameras may struggle to scan this code. Please choose higher-contrast colors.</span>
                 </div>
               </div>
             </div>
@@ -349,7 +356,7 @@
 
                 <div class="action-grid">
                   <button type="button" id="btnCopyQrImage" class="btn btn-secondary" disabled>
-                    <span aria-hidden="true">📋</span> Copy Image
+                    <span aria-hidden="true">📋</span> Copy Image / Link
                   </button>
                   <button type="button" id="btnPrintQr" class="btn btn-secondary" disabled>
                     <span aria-hidden="true">🖨️</span> Print Card
@@ -399,7 +406,7 @@
 
               <div class="form-group">
                 <label for="bioBenefit" class="form-label">
-                  What You Do or Unique Value <span class="helper">(What makes your service valuable?)</span>
+                  What You Do or Unique Value <span class="helper">(Required — what makes your service valuable?)</span>
                 </label>
                 <textarea
                   id="bioBenefit"
@@ -417,7 +424,7 @@
                 </div>
                 <div class="form-group">
                   <label for="bioAudience" class="form-label">Target Audience <span class="helper">(Optional)</span></label>
-                  <input type="text" id="bioAudience" class="form-control" placeholder="e.g. retail shops and local businesses" />
+                  <input type="text" id="bioAudience" class="form-control" placeholder="e.g. retail shops and corporate clients" />
                 </div>
               </div>
 
@@ -428,7 +435,7 @@
                     <option value="instagram" selected>Instagram & TikTok (Under 150 chars)</option>
                     <option value="google">Google Business / Local Maps</option>
                     <option value="linkedin">LinkedIn & Professional Summary</option>
-                    <option value="twitter">Twitter / X (Under 160 chars)</option>
+                    <option value="twitter">X / Twitter (Under 160 chars limit)</option>
                     <option value="website">Website "About Us" / Hero Teaser</option>
                   </select>
                 </div>
@@ -514,7 +521,7 @@
 
               <div class="form-group">
                 <label for="prodFeatures" class="form-label">
-                  Key Features & Specifications <span class="helper">(Separate with commas or newlines)</span>
+                  Key Features & Specifications <span class="helper">(Required — separate with commas or newlines)</span>
                 </label>
                 <textarea
                   id="prodFeatures"
@@ -527,7 +534,7 @@
 
               <div class="form-group">
                 <label for="prodBenefit" class="form-label">
-                  Primary Customer Benefit <span class="helper">(What problem does it solve?)</span>
+                  Primary Customer Benefit <span class="helper">(Required — what problem does it solve?)</span>
                 </label>
                 <input
                   type="text"
@@ -665,7 +672,7 @@
                       </tr>
                     </thead>
                     <tbody id="invoiceItemsTableBody">
-                      <!-- Populated dynamically by script.js -->
+                      <!-- Populated dynamically via DOM creation in script.js -->
                     </tbody>
                   </table>
                 </div>
@@ -674,11 +681,11 @@
               <!-- Tax & Discount Rates -->
               <div class="form-row two-col">
                 <div class="form-group">
-                  <label for="invTaxRate" class="form-label">Tax Rate (%) <span class="helper">(Editable, e.g. 0% or 5%)</span></label>
+                  <label for="invTaxRate" class="form-label">Tax Rate (%) <span class="helper">(Editable estimate, e.g. 0% or 5%)</span></label>
                   <input type="number" id="invTaxRate" class="form-control" value="0.00" min="0" max="100" step="0.25" />
                 </div>
                 <div class="form-group">
-                  <label for="invDiscount" class="form-label">Discount Amount <span class="helper">(Flat value)</span></label>
+                  <label for="invDiscount" class="form-label">Discount Amount <span class="helper">(Flat value, capped at subtotal)</span></label>
                   <input type="number" id="invDiscount" class="form-control" value="0.00" min="0" step="10.00" />
                 </div>
               </div>
@@ -735,7 +742,7 @@
                 </button>
 
                 <p class="legal-disclaimer">
-                  Receipt template for customer slips & store records. Not a certified tax invoice.
+                  Receipt template for store customer records. Tax rates are user-configured estimates, not official tax advice or certification.
                 </p>
               </div>
             </div>
@@ -923,7 +930,7 @@
     </main>
 
     <!-- Mobile Fixed Bottom Navigation Bar (Visible only on screens < 768px) -->
-    <nav class="mobile-bottom-nav" aria-label="Mobile Navigation">
+    <nav class="mobile-bottom-nav" aria-label="Mobile Bottom Navigation">
       <button type="button" class="bottom-nav-item active" data-tab="qr" aria-label="QR Generator">
         <span class="icon" aria-hidden="true">🔲</span>
         <span class="label">QR Code</span>
@@ -943,6 +950,10 @@
       <button type="button" class="bottom-nav-item" data-tab="guide" aria-label="Mobile Guide">
         <span class="icon" aria-hidden="true">📱</span>
         <span class="label">Guide</span>
+      </button>
+      <button type="button" class="bottom-nav-item" data-tab="about" aria-label="About and Privacy">
+        <span class="icon" aria-hidden="true">ℹ️</span>
+        <span class="label">About</span>
       </button>
     </nav>
 

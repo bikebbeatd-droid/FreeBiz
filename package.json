@@ -9,7 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit",
+    "lint": "node --check script.js src/core.js tests/audit.test.mjs && tsc --noEmit",
     "test": "node tests/audit.test.mjs"
   },
   "dependencies": {
