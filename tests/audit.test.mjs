@@ -11,6 +11,8 @@ import jsQR from "jsqr";
 import fs from "fs";
 import path from "path";
 
+import { PNG } from "pngjs";
+
 // Direct import of REAL PRODUCTION CODE
 import {
   escapeHtml,
@@ -35,7 +37,10 @@ import {
   generateProductDescriptionOutputs,
   safeGetStorage,
   safeSetStorage,
-  safeRemoveStorage
+  safeRemoveStorage,
+  isSafeUrlToOpen,
+  decodeQrPixels,
+  parseQrPayload
 } from "../src/core.js";
 
 let passedCount = 0;
@@ -348,6 +353,19 @@ assert(slip.includes("Discount:    -Rs. 300.00"), "Receipt discount matches calc
 assert(slip.includes("Tax (5%):   Rs. 650.00"), "Receipt tax matches calculator");
 assert(slip.includes("GRAND TOTAL: Rs. 13,650.00"), "Receipt grand total matches calculator");
 
+// Regression Case 5: Zero-quantity and empty invoice items
+const invZeroQty = calculateInvoiceSummary([{ desc: "Test", qty: 0, price: 500 }], 0, 0);
+assert(invZeroQty.subtotal === 0, "Item with qty 0 yields 0 subtotal");
+assert(invZeroQty.grandTotal === 0, "Grand total with 0 qty is 0");
+
+const invEmpty = calculateInvoiceSummary([], 10, 50);
+assert(invEmpty.subtotal === 0, "Empty items array yields 0 subtotal");
+assert(invEmpty.grandTotal === 0, "Empty items array yields 0 grand total");
+
+assert(validateQuantity(0.9) === 0, "Float < 1 truncated to 0");
+assert(validatePrice(1e12) === 1000000000, "Extreme price clamped to maximum 1,000,000,000");
+assert(validateTaxRate(250) === 100, "Tax rate > 100% clamped to 100%");
+
 // -------------------------------------------------------------
 // TEST SUITE 9: Product Description Generation & Safe HTML Output
 // -------------------------------------------------------------
@@ -437,6 +455,169 @@ assert(missingIds.length === 0, `All ${jsIds.size} element IDs referenced in scr
 if (missingIds.length > 0) {
   console.error("Missing IDs:", missingIds);
 }
+
+// -------------------------------------------------------------
+// TEST SUITE 13: QR Decoder & Real Pixel Decoding
+// -------------------------------------------------------------
+console.log("\nTEST SUITE 13: Live Image & Pixel QR Decoder (jsQR Integration)");
+
+// Create a real QR matrix to test decodeQrPixels
+const testPayload = "https://freebiz.pk/scan-test-ok";
+const qrObj = QRCode.create(testPayload, { errorCorrectionLevel: "M" });
+const modSize = 4;
+const border = 4;
+const modulesCount = qrObj.modules.size;
+const imgDim = (modulesCount + border * 2) * modSize;
+const pixelData = new Uint8ClampedArray(imgDim * imgDim * 4);
+
+// Fill with white background
+pixelData.fill(255);
+
+// Render QR modules onto RGBA buffer
+for (let r = 0; r < modulesCount; r++) {
+  for (let c = 0; c < modulesCount; c++) {
+    if (qrObj.modules.get(r, c)) {
+      for (let y = 0; y < modSize; y++) {
+        for (let x = 0; x < modSize; x++) {
+          const px = ((border + c) * modSize + x);
+          const py = ((border + r) * modSize + y);
+          const idx = (py * imgDim + px) * 4;
+          pixelData[idx] = 0;     // R
+          pixelData[idx + 1] = 0; // G
+          pixelData[idx + 2] = 0; // B
+          pixelData[idx + 3] = 255;
+        }
+      }
+    }
+  }
+}
+
+const decodeRes = decodeQrPixels(pixelData, imgDim, imgDim);
+assert(decodeRes.success === true, "decodeQrPixels successfully detected and decoded QR code");
+assert(decodeRes.data === testPayload, `Decoded payload matches input exactly: ${decodeRes.data}`);
+
+// Test failure on blank image
+const blankPixels = new Uint8ClampedArray(100 * 100 * 4);
+blankPixels.fill(255);
+const blankRes = decodeQrPixels(blankPixels, 100, 100);
+assert(blankRes.success === false, "Blank image correctly rejected with friendly error");
+assert(blankRes.error.includes("No readable QR code"), "Error explains that no code was found");
+
+// Test dimension validation
+const invalidDimRes = decodeQrPixels(blankPixels, 0, 100);
+assert(invalidDimRes.success === false, "Zero width rejected cleanly");
+
+// -------------------------------------------------------------
+// TEST SUITE 14: QR Payload Parser & Structured Metadata
+// -------------------------------------------------------------
+console.log("\nTEST SUITE 14: QR Payload Parser & Metadata Extraction");
+
+// 1. Wi-Fi
+const wifiPayload = "WIFI:S:FreeBiz_HQ;T:WPA;P:Secret\\;Pass\\:123;H:false;;";
+const parsedWifi = parseQrPayload(wifiPayload);
+assert(parsedWifi.type === "wifi", "Identified Wi-Fi network type");
+assert(parsedWifi.details.ssid === "FreeBiz_HQ", `Parsed SSID: ${parsedWifi.details.ssid}`);
+assert(parsedWifi.details.encryption === "WPA", `Parsed encryption: ${parsedWifi.details.encryption}`);
+assert(parsedWifi.details.password === "Secret;Pass:123", `Unescaped password: ${parsedWifi.details.password}`);
+assert(parsedWifi.details.hidden === "No", "Hidden flag identified");
+
+// Open Wi-Fi
+const parsedOpenWifi = parseQrPayload("WIFI:S:Guest_WiFi;T:nopass;;");
+assert(parsedOpenWifi.type === "wifi", "Open Wi-Fi identified");
+assert(parsedOpenWifi.details.encryption.includes("Open"), "Open encryption identified");
+
+// 2. vCard 3.0
+const vcardPayload = "BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Fatima Noor\r\nORG:Noor Textiles\r\nTEL:+923001234567\r\nEMAIL:fatima@noortextiles.pk\r\nURL:https://noortextiles.pk\r\nEND:VCARD";
+const parsedVcard = parseQrPayload(vcardPayload);
+assert(parsedVcard.type === "vcard", "Identified vCard contact card");
+assert(parsedVcard.details.name === "Fatima Noor", `Parsed contact name: ${parsedVcard.details.name}`);
+assert(parsedVcard.details.organization === "Noor Textiles", "Parsed organization");
+assert(parsedVcard.details.phone === "+923001234567", "Parsed phone number");
+assert(parsedVcard.details.email === "fatima@noortextiles.pk", "Parsed email");
+assert(parsedVcard.isSafeUrl === true, "vCard website verified as safe URL");
+
+// 3. WhatsApp Direct Chat
+const waPayload = "https://wa.me/923001234567?text=Hello%20Catalog%20Price";
+const parsedWa = parseQrPayload(waPayload);
+assert(parsedWa.type === "whatsapp", "Identified WhatsApp chat link");
+assert(parsedWa.details.phone === "+923001234567", `Parsed WhatsApp phone: ${parsedWa.details.phone}`);
+assert(parsedWa.details.message === "Hello Catalog Price", `Parsed decoded message: ${parsedWa.details.message}`);
+
+// 4. Telephone
+const phonePayload = "tel:+923001234567";
+const parsedPhone = parseQrPayload(phonePayload);
+assert(parsedPhone.type === "phone", "Identified Phone Call payload");
+assert(parsedPhone.details.phone === "+923001234567", "Extracted phone digits");
+
+// 5. Email
+const emailPayload = "mailto:sales@shop.pk?subject=Order";
+const parsedEmail = parseQrPayload(emailPayload);
+assert(parsedEmail.type === "email", "Identified Email payload");
+assert(parsedEmail.details.email === "sales@shop.pk", "Extracted email address");
+
+// 6. Website URL
+const urlPayload = "https://example.com/products?ref=qr";
+const parsedUrl = parseQrPayload(urlPayload);
+assert(parsedUrl.type === "url", "Identified Website URL payload");
+assert(parsedUrl.isSafeUrl === true, "Marked safe URL");
+assert(parsedUrl.safeUrl === urlPayload, "Safe URL preserved");
+
+// 7. Plain Text
+const textPayload = "Item 102 - Shelf B4 - Warehouse Lahore";
+const parsedText = parseQrPayload(textPayload);
+assert(parsedText.type === "text", "Identified Plain Text payload");
+assert(parsedText.details.length === textPayload.length, "Computed text length");
+
+// 8. Empty payload
+const parsedEmpty = parseQrPayload("");
+assert(parsedEmpty.type === "unknown", "Empty payload returns unknown type");
+
+// -------------------------------------------------------------
+// TEST SUITE 15: Safe URL Action Verifier
+// -------------------------------------------------------------
+console.log("\nTEST SUITE 15: Safe URL Action Verifier");
+
+assert(isSafeUrlToOpen("https://google.com") === true, "Valid HTTPS URL permitted");
+assert(isSafeUrlToOpen("http://mybiz.pk/page") === true, "Valid HTTP URL permitted");
+assert(isSafeUrlToOpen("store.online.pk") === true, "Valid domain name permitted");
+assert(isSafeUrlToOpen("javascript:alert(1)") === false, "Dangerous javascript: scheme rejected");
+assert(isSafeUrlToOpen("JAVASCRIPT:alert(document.cookie)") === false, "Case-insensitive javascript: rejected");
+assert(isSafeUrlToOpen("data:text/html,<script>alert(1)</script>") === false, "Dangerous data: scheme rejected");
+assert(isSafeUrlToOpen("vbscript:msgbox(1)") === false, "Dangerous vbscript: scheme rejected");
+assert(isSafeUrlToOpen("file:///etc/passwd") === false, "Dangerous file: scheme rejected");
+assert(isSafeUrlToOpen("") === false, "Empty URL rejected");
+assert(isSafeUrlToOpen(null) === false, "Null URL rejected");
+
+// -------------------------------------------------------------
+// TEST SUITE 16: QR PNG Generation & Decoding Roundtrip Integrity
+// -------------------------------------------------------------
+console.log("\nTEST SUITE 16: QR PNG Generation & Decoding Roundtrip");
+
+const roundtripPayload = "FreeBiz QR Scanner Verified Roundtrip 2026! +92 300 1234567";
+const pngBuffer = await QRCode.toBuffer(roundtripPayload, {
+  type: "png",
+  width: 300,
+  margin: 4,
+  errorCorrectionLevel: "H"
+});
+
+assert(pngBuffer.length > 100, `Generated PNG buffer has valid non-zero size: ${pngBuffer.length} bytes`);
+// Check standard PNG magic bytes: \x89PNG\r\n\x1a\n
+assert(
+  pngBuffer[0] === 0x89 &&
+  pngBuffer[1] === 0x50 &&
+  pngBuffer[2] === 0x4E &&
+  pngBuffer[3] === 0x47,
+  "PNG magic header bytes verified (0x89, 'P', 'N', 'G')"
+);
+
+// Parse the PNG and decode its pixels with jsQR
+const parsedPng = PNG.sync.read(pngBuffer);
+assert(parsedPng.width === 300 && parsedPng.height === 300, `Parsed PNG dimensions match requested resolution (${parsedPng.width}x${parsedPng.height})`);
+
+const roundtripDecoded = decodeQrPixels(new Uint8ClampedArray(parsedPng.data), parsedPng.width, parsedPng.height);
+assert(roundtripDecoded.success === true, "jsQR successfully decoded generated PNG buffer");
+assert(roundtripDecoded.data === roundtripPayload, "Decoded content strictly matches original payload byte-for-byte with zero loss");
 
 // -------------------------------------------------------------
 // SUMMARY & EXIT

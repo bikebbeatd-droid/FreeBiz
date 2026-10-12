@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">FreeBiz QR Scanner</string>
+    <string name="title_activity_main">FreeBiz QR Scanner</string>
+    <string name="package_name">com.freebiz.qrscanner</string>
+    <string name="custom_url_scheme">com.freebiz.qrscanner</string>
+</resources>

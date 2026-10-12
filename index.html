@@ -3,33 +3,45 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
-    <meta name="theme-color" content="#2563eb" />
-    <title>FreeBiz Tools — 100% Free Local Business Utilities</title>
-    <meta name="description" content="Free, private, mobile-first business utilities that run 100% locally in your browser. Generate custom QR codes, business bios, product descriptions, and instant receipts with zero logins, fees, or AI APIs." />
-    <meta property="og:title" content="FreeBiz Tools — 100% Free Local Business Utilities" />
-    <meta property="og:description" content="Free, private, mobile-first business utilities that run 100% locally in your browser. Generate custom QR codes, business bios, product descriptions, and instant receipts with zero logins, fees, or AI APIs." />
+    <meta name="theme-color" content="#060D1E" />
+    <title>FreeBiz QR Scanner — 100% Free Local QR Toolkit &amp; Business Utilities</title>
+    <meta name="description" content="Professional 100% client-side QR scanner and generator. Scan QR codes via live camera or image files, customize high-resolution QR codes, and generate business tools offline." />
+    <meta property="og:title" content="FreeBiz QR Scanner — 100% Free Local QR Toolkit &amp; Business Utilities" />
+    <meta property="og:description" content="Professional 100% client-side QR scanner and generator. Scan QR codes via live camera or image files, customize high-resolution QR codes, and generate business tools offline." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="FreeBiz Tools — 100% Free Local Business Utilities" />
-    <meta name="twitter:description" content="Free, private, mobile-first business utilities that run 100% locally in your browser." />
-    <!-- Inline SVG Favicon -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%232563eb'/%3E%3Cpath d='M18 6L9 18h6l-2 8 9-12h-6l2-8z' fill='white'/%3E%3C/svg%3E" />
+    <meta name="twitter:title" content="FreeBiz QR Scanner — 100% Free Local QR Toolkit &amp; Business Utilities" />
+    <meta name="twitter:description" content="Professional 100% client-side QR scanner, generator, and mobile business utilities that run 100% locally in your browser." />
+    <!-- Inline SVG Favicon (Dark Navy + Cyan Viewfinder Reticle) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23060D1E'/%3E%3Cpath d='M4 10V6a2 2 0 0 1 2-2h4M22 4h4a2 2 0 0 1 2 2v4M4 22v4a2 2 0 0 0 2 2h4M22 28h4a2 2 0 0 0 2-2v-4' stroke='%2300F0FF' stroke-width='2' stroke-linecap='round' fill='none'/%3E%3Crect x='9' y='9' width='5' height='5' fill='white'/%3E%3Crect x='18' y='9' width='5' height='5' fill='white'/%3E%3Crect x='9' y='18' width='5' height='5' fill='white'/%3E%3Crect x='18' y='18' width='5' height='5' fill='%2300F0FF'/%3E%3Cline x1='6' y1='16' x2='26' y2='16' stroke='%2300F0FF' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
     <!-- Top Site Header -->
     <header class="site-header">
       <div class="container header-inner">
-        <a href="#" class="brand-mark" aria-label="FreeBiz Tools Home">
-          <div class="brand-icon" aria-hidden="true">⚡</div>
-          <span class="brand-title">FreeBiz</span>
+        <a href="#" class="brand-mark" aria-label="FreeBiz QR Scanner Home">
+          <div class="brand-icon" style="background: #060D1E; border: 1.5px solid #00F0FF; display: flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 9px;" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M3 8V5a2 2 0 0 1 2-2h3M19 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M19 16v3a2 2 0 0 1-2 2h-3" stroke="#00F0FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <rect x="7" y="7" width="3.5" height="3.5" fill="#FFFFFF"/>
+              <rect x="13.5" y="7" width="3.5" height="3.5" fill="#FFFFFF"/>
+              <rect x="7" y="13.5" width="3.5" height="3.5" fill="#FFFFFF"/>
+              <rect x="13.5" y="13.5" width="3.5" height="3.5" fill="#00F0FF"/>
+              <line x1="4" y1="12" x2="20" y2="12" stroke="#00F0FF" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span class="brand-title">FreeBiz QR Scanner</span>
           <span class="brand-badge">Free</span>
         </a>
 
         <!-- Desktop & Tablet Navigation Tabs -->
         <nav class="desktop-nav" aria-label="Desktop Tool Selection">
+          <button type="button" class="nav-link" data-tab="scanner">
+            <span aria-hidden="true">📷</span> QR Scanner
+          </button>
           <button type="button" class="nav-link active" data-tab="qr">
-            <span aria-hidden="true">🔲</span> QR Codes
+            <span aria-hidden="true">🔲</span> QR Generator
           </button>
           <button type="button" class="nav-link" data-tab="bio">
             <span aria-hidden="true">📝</span> Business Bios
@@ -49,8 +61,8 @@
         </nav>
 
         <div class="header-actions">
-          <button type="button" id="btnHeaderTestPhone" class="btn btn-outline-primary btn-sm">
-            <span aria-hidden="true">📱</span> Mobile Guide
+          <button type="button" id="btnHeaderScanner" class="btn btn-outline-primary btn-sm" data-tab="scanner">
+            <span aria-hidden="true">📷</span> Quick Scan
           </button>
         </div>
       </div>
@@ -77,6 +89,199 @@
       </section>
 
       <!-- ===================================================================
+           TOOL 0: QR CODE SCANNER & IMAGE DECODER (100% Client-Side Camera / File)
+           =================================================================== -->
+      <section id="scannerToolView" class="tool-view" aria-labelledby="scannerHeading">
+        <div class="tool-card">
+          <div class="tool-header">
+            <div class="tool-title-group">
+              <div class="tool-icon-box" style="background: #060D1E; border: 1.5px solid #00F0FF;" aria-hidden="true">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M3 8V5a2 2 0 0 1 2-2h3M19 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M19 16v3a2 2 0 0 1-2 2h-3" stroke="#00F0FF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <rect x="7" y="7" width="3.5" height="3.5" fill="#FFFFFF"/>
+                  <rect x="13.5" y="7" width="3.5" height="3.5" fill="#FFFFFF"/>
+                  <rect x="7" y="13.5" width="3.5" height="3.5" fill="#FFFFFF"/>
+                  <rect x="13.5" y="13.5" width="3.5" height="3.5" fill="#00F0FF"/>
+                  <line x1="4" y1="12" x2="20" y2="12" stroke="#00F0FF" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+              </div>
+              <div>
+                <h2 id="scannerHeading">QR Code Scanner &amp; Decoder</h2>
+                <p>Live camera scanning • Decode from image files • 100% local &amp; private</p>
+              </div>
+            </div>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.25rem;">
+              <button type="button" id="btnJumpToGenerator" class="btn btn-secondary btn-sm">
+                <span aria-hidden="true">🔲</span> Generate QR Instead
+              </button>
+            </div>
+          </div>
+
+          <!-- Scanner Mode Selector (Camera vs Image File) -->
+          <div class="form-group" style="margin-bottom: 1.25rem;">
+            <div class="segmented-control" role="tablist" aria-label="Scanner input mode">
+              <button type="button" class="segment-btn active" id="tabScannerCamera" role="tab" aria-selected="true">
+                <span aria-hidden="true">📹</span> Live Camera
+              </button>
+              <button type="button" class="segment-btn" id="tabScannerImage" role="tab" aria-selected="false">
+                <span aria-hidden="true">📁</span> Decode from Image
+              </button>
+            </div>
+          </div>
+
+          <div class="tool-grid">
+            <!-- Left Column: Scanner Viewfinder or Image Upload -->
+            <div class="tool-inputs-col">
+              <!-- Mode A: Live Camera Stream -->
+              <div id="scannerCameraPanel">
+                <div class="scanner-viewfinder-container">
+                  <video id="scannerVideo" playsinline autoplay muted aria-label="Camera feed for QR scanning"></video>
+                  <canvas id="scannerVideoCanvas" style="display: none;"></canvas>
+
+                  <!-- Viewfinder Reticle Overlay with Cyan Corners and Laser -->
+                  <div class="viewfinder-overlay" id="scannerOverlay">
+                    <div class="reticle-box">
+                      <div class="corner corner-tl"></div>
+                      <div class="corner corner-tr"></div>
+                      <div class="corner corner-bl"></div>
+                      <div class="corner corner-br"></div>
+                      <div class="laser-beam" id="scannerLaser"></div>
+                    </div>
+                  </div>
+
+                  <!-- Stopped / Idle Overlay -->
+                  <div id="scannerStoppedState" class="scanner-stopped-overlay">
+                    <div class="empty-state-icon" style="font-size: 2.5rem; margin-bottom: 0.5rem;">📷</div>
+                    <div style="font-weight: 700; color: #fff; margin-bottom: 0.25rem; font-size: 1.1rem;">Camera Ready</div>
+                    <p style="font-size: 0.85rem; color: #94a3b8; max-width: 250px; margin: 0 auto 1.25rem;">Position any QR code within the frame to scan and decode it automatically.</p>
+                    <button type="button" id="btnStartCameraOverlay" class="btn btn-primary btn-sm" style="min-height: 44px; padding: 0.5rem 1.25rem;">
+                      <span aria-hidden="true">▶️</span> Start Camera
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Camera Controls Row -->
+                <div class="scanner-controls-row" style="margin-top: 0.85rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                  <button type="button" id="btnToggleCamera" class="btn btn-primary" style="flex: 1; min-height: 46px;">
+                    <span aria-hidden="true" id="btnToggleCameraIcon">▶️</span> <span id="btnToggleCameraText">Start Camera</span>
+                  </button>
+                  <button type="button" id="btnSwitchCamera" class="btn btn-secondary" style="display: none; min-height: 46px;" title="Switch camera front/back">
+                    <span aria-hidden="true">🔄</span> Switch
+                  </button>
+                  <button type="button" id="btnToggleTorch" class="btn btn-secondary" style="display: none; min-height: 46px;" title="Toggle flashlight / torch">
+                    <span aria-hidden="true">🔦</span> Torch
+                  </button>
+                </div>
+
+                <!-- Camera Guidance / Status Alert -->
+                <div id="cameraStatusNotice" class="notice-box notice-info" style="margin-top: 0.75rem; font-size: 0.82rem;">
+                  <span aria-hidden="true">💡</span>
+                  <span id="cameraStatusText">Point camera directly at any QR code to scan. No images or data are sent to any server.</span>
+                </div>
+              </div>
+
+              <!-- Mode B: Image File Decoder -->
+              <div id="scannerImagePanel" style="display: none;">
+                <input type="file" id="scannerFileInput" accept="image/*" style="display: none;" />
+                
+                <div id="scannerDropZone" class="scanner-dropzone" tabindex="0" role="button" aria-label="Upload or choose image file containing a QR code">
+                  <div class="dropzone-icon" aria-hidden="true">📁</div>
+                  <div class="dropzone-title">Choose or Drag QR Code Image</div>
+                  <div class="dropzone-subtitle">Supports PNG, JPG, WebP, SVG, BMP</div>
+                  <button type="button" id="btnBrowseFile" class="btn btn-outline-primary btn-sm" style="margin-top: 0.6rem; min-height: 44px;">
+                    <span aria-hidden="true">🖼️</span> Select Image File
+                  </button>
+                </div>
+
+                <div id="imagePreviewContainer" class="image-preview-container" style="display: none; margin-top: 1rem;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span style="font-size: 0.82rem; font-weight: 600; color: var(--text-secondary);">Selected Image</span>
+                    <button type="button" id="btnClearImage" class="btn btn-secondary btn-sm" style="padding: 0.25rem 0.6rem; min-height: 32px;">Clear</button>
+                  </div>
+                  <div class="preview-img-wrapper">
+                    <img id="scannerImagePreview" alt="Uploaded QR Code image preview" />
+                  </div>
+                </div>
+
+                <div id="imageDecodeNotice" class="notice-box notice-info" style="margin-top: 0.75rem; font-size: 0.82rem;">
+                  <span aria-hidden="true">ℹ️</span>
+                  <span>Select any image or screenshot containing a QR code to decode its payload instantly.</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Column: Decoded Result Card & Quick Actions -->
+            <div class="tool-preview-col">
+              <div class="preview-card">
+                <div class="preview-card-header">
+                  <span class="preview-title">Scan Result</span>
+                  <span id="scannerStatusBadge" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 600;">Awaiting Scan</span>
+                </div>
+
+                <!-- Empty State -->
+                <div id="scannerEmptyState" class="empty-state-box" style="padding: 2.5rem 1rem;">
+                  <div class="empty-state-icon" aria-hidden="true">🔍</div>
+                  <div class="empty-state-title">No QR Code Scanned Yet</div>
+                  <div class="empty-state-desc">Start your camera or select an image on the left to decode the QR code content.</div>
+                </div>
+
+                <!-- Active Result Display Card -->
+                <div id="scannerActiveResult" style="display: none;">
+                  <!-- Type Badge & Detection Timestamp -->
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+                    <div id="scanTypeBadge" class="scan-type-badge">
+                      <span id="scanTypeIcon" aria-hidden="true">🌐</span>
+                      <span id="scanTypeLabel">Website Link</span>
+                    </div>
+                    <span id="scanResultTime" style="font-size: 0.75rem; color: var(--text-muted);"></span>
+                  </div>
+
+                  <!-- Parsed Human-Readable Details -->
+                  <div id="scanResultDetails" class="scan-details-box"></div>
+
+                  <!-- Raw Decoded Content Box -->
+                  <div style="margin-top: 0.75rem;">
+                    <label style="font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Raw Decoded Content</label>
+                    <div id="scanResultRaw" class="scan-raw-box" tabindex="0" title="Full raw content of scanned QR code"></div>
+                  </div>
+
+                  <!-- Primary Action Buttons -->
+                  <div class="action-grid" style="margin-top: 1rem;">
+                    <button type="button" id="btnCopyScanResult" class="btn btn-primary">
+                      <span aria-hidden="true">📋</span> Copy Content
+                    </button>
+                    <a id="btnOpenScanLink" class="btn btn-secondary" target="_blank" rel="noopener noreferrer" style="display: none;">
+                      <span aria-hidden="true">🔗</span> Open Link
+                    </a>
+                  </div>
+
+                  <div class="action-grid">
+                    <button type="button" id="btnShareScanResult" class="btn btn-secondary">
+                      <span aria-hidden="true">📤</span> Share Content
+                    </button>
+                    <button type="button" id="btnResetScan" class="btn btn-secondary">
+                      <span aria-hidden="true">🔄</span> Scan Another
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Local Scan History -->
+                <div class="scanner-history-wrapper" style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-secondary);">Recent Scans (Local)</span>
+                    <button type="button" id="btnClearScanHistory" class="btn btn-secondary btn-sm" style="font-size: 0.75rem; padding: 0.2rem 0.5rem; min-height: 28px;">Clear</button>
+                  </div>
+                  <div id="scannerHistoryList" class="scanner-history-list">
+                    <div style="font-size: 0.78rem; color: var(--text-muted); font-style: italic; padding: 0.5rem 0;">No previous scans saved.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===================================================================
            TOOL 1: QR CODE GENERATOR (100% Local, Zero External / Paid API)
            =================================================================== -->
       <section id="qrToolView" class="tool-view active" aria-labelledby="qrToolHeading">
@@ -89,9 +294,14 @@
                 <p>ISO-standard client generation • No scan limits • Works completely offline</p>
               </div>
             </div>
-            <button type="button" id="btnLoadQrExample" class="btn btn-secondary btn-sm" style="margin-top: 0.25rem;">
-              <span aria-hidden="true">💡</span> Load Sample Data
-            </button>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.25rem;">
+              <button type="button" id="btnJumpToScanner" class="btn btn-outline-primary btn-sm">
+                <span aria-hidden="true">📷</span> Scan QR Instead
+              </button>
+              <button type="button" id="btnLoadQrExample" class="btn btn-secondary btn-sm">
+                <span aria-hidden="true">💡</span> Load Sample Data
+              </button>
+            </div>
           </div>
 
           <div class="tool-grid">
@@ -349,12 +559,15 @@
                   <button type="button" id="btnDownloadQrPng" class="btn btn-primary" disabled>
                     <span aria-hidden="true">⬇️</span> Download PNG
                   </button>
-                  <button type="button" id="btnDownloadQrSvg" class="btn btn-secondary" disabled>
-                    <span aria-hidden="true">📐</span> Download SVG
+                  <button type="button" id="btnShareQrImage" class="btn btn-secondary" disabled>
+                    <span aria-hidden="true">📤</span> Share / Save Image
                   </button>
                 </div>
 
                 <div class="action-grid">
+                  <button type="button" id="btnDownloadQrSvg" class="btn btn-secondary" disabled>
+                    <span aria-hidden="true">📐</span> Download SVG
+                  </button>
                   <button type="button" id="btnCopyQrImage" class="btn btn-secondary" disabled>
                     <span aria-hidden="true">📋</span> Copy Image / Link
                   </button>
@@ -931,9 +1144,13 @@
 
     <!-- Mobile Fixed Bottom Navigation Bar (Visible only on screens < 768px) -->
     <nav class="mobile-bottom-nav" aria-label="Mobile Bottom Navigation">
+      <button type="button" class="bottom-nav-item" data-tab="scanner" aria-label="QR Scanner">
+        <span class="icon" aria-hidden="true">📷</span>
+        <span class="label">Scan QR</span>
+      </button>
       <button type="button" class="bottom-nav-item active" data-tab="qr" aria-label="QR Generator">
         <span class="icon" aria-hidden="true">🔲</span>
-        <span class="label">QR Code</span>
+        <span class="label">Make QR</span>
       </button>
       <button type="button" class="bottom-nav-item" data-tab="bio" aria-label="Bio Generator">
         <span class="icon" aria-hidden="true">📝</span>
@@ -946,10 +1163,6 @@
       <button type="button" class="bottom-nav-item" data-tab="invoice" aria-label="Instant Receipts">
         <span class="icon" aria-hidden="true">🧾</span>
         <span class="label">Receipts</span>
-      </button>
-      <button type="button" class="bottom-nav-item" data-tab="guide" aria-label="Mobile Guide">
-        <span class="icon" aria-hidden="true">📱</span>
-        <span class="label">Guide</span>
       </button>
       <button type="button" class="bottom-nav-item" data-tab="about" aria-label="About and Privacy">
         <span class="icon" aria-hidden="true">ℹ️</span>
@@ -964,17 +1177,18 @@
     <footer class="site-footer">
       <div class="container footer-inner">
         <div>
-          <strong style="color: var(--text-primary);">FreeBiz Tools</strong>
+          <strong style="color: var(--text-primary);">FreeBiz QR Scanner</strong>
           <span style="margin: 0 0.4rem; color: var(--border-subtle);">|</span>
-          <span>100% Free, Private, Local Browser Utilities for Small Business</span>
+          <span>100% Free, Private, Local QR Toolkit &amp; Small Business Utilities</span>
         </div>
         <div class="footer-links">
-          <button type="button" data-footer-jump="qr">QR Code</button>
+          <button type="button" data-footer-jump="scanner">QR Scanner</button>
+          <button type="button" data-footer-jump="qr">QR Maker</button>
           <button type="button" data-footer-jump="bio">Bio Writer</button>
           <button type="button" data-footer-jump="product">Descriptions</button>
           <button type="button" data-footer-jump="invoice">Receipts</button>
           <button type="button" data-footer-jump="guide">Mobile Guide</button>
-          <button type="button" data-footer-jump="about">About & Privacy</button>
+          <button type="button" data-footer-jump="about">About &amp; Privacy</button>
         </div>
       </div>
     </footer>

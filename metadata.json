@@ -1,6 +1,6 @@
 {
-  "name": "FreeBiz Tools",
-  "description": "Beginner-friendly, mobile-first business utilities that run 100% locally in your browser. Generate custom QR codes, business bios, product descriptions, and instant receipts with zero logins, fees, or AI APIs.",
+  "name": "FreeBiz QR Scanner",
+  "description": "Professional 100% client-side QR scanner, generator, and mobile business utility suite. Scan QR codes via live camera or image files, customize high-resolution QR codes, and generate business tools offline.",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }

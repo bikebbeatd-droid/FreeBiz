@@ -29,7 +29,12 @@ import {
   generateProductDescriptionOutputs,
   safeGetStorage,
   safeSetStorage,
-  safeRemoveStorage
+  safeRemoveStorage,
+  isSafeUrlToOpen,
+  decodeQrPixels,
+  parseQrPayload,
+  createQrPngBlob,
+  triggerBlobDownload
 } from "./src/core.js";
 
 /* ==========================================================================
@@ -345,26 +350,73 @@ export function initQRCodeTool() {
     });
   });
 
-  // Download PNG
-  btnDownloadPng?.addEventListener("click", () => {
+  // Download PNG (Reliable Blob + Object URL with Data URL fallback)
+  btnDownloadPng?.addEventListener("click", async () => {
     if (!currentQRData) {
       showToast("Please enter content to generate a QR code first.", "error");
       return;
     }
+    const filename = `freebiz-qr-${activeType}-${Date.now()}.png`;
     try {
+      const blobRes = await createQrPngBlob(canvas);
+      if (blobRes.success && blobRes.blob) {
+        const ok = triggerBlobDownload(filename, blobRes.blob);
+        if (ok) {
+          showToast(`Downloaded ${filename}`, "success");
+          return;
+        }
+      }
+      // Fallback to dataURL if Blob download failed
       const dataUrl = canvas.toDataURL("image/png");
-      if (!dataUrl || dataUrl.length < 50) {
-        showToast("QR code image is not ready to download", "error");
+      if (dataUrl && dataUrl.length > 50) {
+        const link = document.createElement("a");
+        link.download = filename;
+        link.href = dataUrl;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast("Downloaded QR Code as PNG", "success");
         return;
       }
-      const link = document.createElement("a");
-      link.download = `freebiz-qr-${activeType}-${Date.now()}.png`;
-      link.href = dataUrl;
-      link.click();
-      showToast("Downloaded QR Code as PNG", "success");
+      showToast("Could not download image. Please use 'Share / Save Image'.", "error");
     } catch (err) {
       console.error("PNG download error:", err);
-      showToast("Download failed", "error");
+      showToast("Download failed: " + (err instanceof Error ? err.message : String(err)), "error");
+    }
+  });
+
+  // Share / Save Image (Android & Mobile Native Share API)
+  const btnShareQrImage = document.getElementById("btnShareQrImage");
+  btnShareQrImage?.addEventListener("click", async () => {
+    if (!currentQRData) {
+      showToast("Please enter content to generate a QR code first.", "error");
+      return;
+    }
+    const filename = `freebiz-qr-${activeType}-${Date.now()}.png`;
+    try {
+      const blobRes = await createQrPngBlob(canvas);
+      if (!blobRes.success || !blobRes.blob) {
+        showToast("Could not prepare QR image for sharing", "error");
+        return;
+      }
+      const file = new File([blobRes.blob], filename, { type: "image/png" });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: "FreeBiz QR Code",
+          text: `Scan this QR code: ${currentQRData}`
+        });
+        showToast("QR Code shared successfully!", "success");
+      } else {
+        // Fallback: trigger blob download
+        triggerBlobDownload(filename, blobRes.blob);
+        showToast("Saved QR Code to device", "success");
+      }
+    } catch (err) {
+      if (err.name !== "AbortError") {
+        console.error("Share error:", err);
+        showToast("Could not share image", "error");
+      }
     }
   });
 
@@ -463,6 +515,571 @@ export function initQRCodeTool() {
 
   // Starts with clean empty inputs
   updateQR();
+}
+
+/* ==========================================================================
+   PART 2.5: QR CODE SCANNER & IMAGE DECODER ENGINE
+   ========================================================================== */
+
+export function initQrScannerTool() {
+  const video = document.getElementById("scannerVideo");
+  const canvas = document.getElementById("scannerVideoCanvas");
+  const ctx = canvas?.getContext("2d", { willReadFrequently: true });
+  const overlay = document.getElementById("scannerOverlay");
+  const stoppedState = document.getElementById("scannerStoppedState");
+  const statusNotice = document.getElementById("cameraStatusNotice");
+  const statusText = document.getElementById("cameraStatusText");
+  const statusBadge = document.getElementById("scannerStatusBadge");
+
+  const btnToggleCamera = document.getElementById("btnToggleCamera");
+  const btnToggleCameraText = document.getElementById("btnToggleCameraText");
+  const btnToggleCameraIcon = document.getElementById("btnToggleCameraIcon");
+  const btnStartOverlay = document.getElementById("btnStartCameraOverlay");
+  const btnSwitchCamera = document.getElementById("btnSwitchCamera");
+  const btnToggleTorch = document.getElementById("btnToggleTorch");
+
+  const tabCamera = document.getElementById("tabScannerCamera");
+  const tabImage = document.getElementById("tabScannerImage");
+  const panelCamera = document.getElementById("scannerCameraPanel");
+  const panelImage = document.getElementById("scannerImagePanel");
+
+  const fileInput = document.getElementById("scannerFileInput");
+  const dropZone = document.getElementById("scannerDropZone");
+  const btnBrowseFile = document.getElementById("btnBrowseFile");
+  const imgPreviewContainer = document.getElementById("imagePreviewContainer");
+  const imgPreview = document.getElementById("scannerImagePreview");
+  const btnClearImage = document.getElementById("btnClearImage");
+
+  const emptyState = document.getElementById("scannerEmptyState");
+  const activeResult = document.getElementById("scannerActiveResult");
+  const typeIcon = document.getElementById("scanTypeIcon");
+  const typeLabel = document.getElementById("scanTypeLabel");
+  const resultTime = document.getElementById("scanResultTime");
+  const resultDetails = document.getElementById("scanResultDetails");
+  const resultRaw = document.getElementById("scanResultRaw");
+
+  const btnCopyResult = document.getElementById("btnCopyScanResult");
+  const btnOpenLink = document.getElementById("btnOpenScanLink");
+  const btnShareResult = document.getElementById("btnShareScanResult");
+  const btnResetScan = document.getElementById("btnResetScan");
+  const historyList = document.getElementById("scannerHistoryList");
+  const btnClearHistory = document.getElementById("btnClearScanHistory");
+
+  let mediaStream = null;
+  let videoTrack = null;
+  let scanAnimationId = null;
+  let isScanning = false;
+  let currentCameraFacing = "environment";
+  let torchEnabled = false;
+  let currentScanResult = null;
+
+  // Local History Storage
+  const HISTORY_KEY = "freebiz_scan_history_v1";
+
+  function loadHistory() {
+    const raw = safeGetStorage(HISTORY_KEY);
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveScanToHistory(payload) {
+    const history = loadHistory();
+    const item = {
+      id: Date.now(),
+      raw: payload.raw,
+      type: payload.type,
+      typeLabel: payload.typeLabel,
+      icon: payload.icon,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      date: new Date().toLocaleDateString()
+    };
+    const filtered = history.filter(h => h.raw !== item.raw);
+    filtered.unshift(item);
+    safeSetStorage(HISTORY_KEY, JSON.stringify(filtered.slice(0, 20)));
+    renderHistory();
+  }
+
+  function renderHistory() {
+    if (!historyList) return;
+    const history = loadHistory();
+    historyList.innerHTML = "";
+    if (history.length === 0) {
+      const empty = document.createElement("div");
+      empty.style.cssText = "font-size: 0.78rem; color: var(--text-muted); font-style: italic; padding: 0.5rem 0;";
+      empty.textContent = "No previous scans saved.";
+      historyList.appendChild(empty);
+      return;
+    }
+
+    history.forEach(item => {
+      const row = document.createElement("div");
+      row.className = "scanner-history-item";
+      row.tabIndex = 0;
+      row.setAttribute("role", "button");
+      row.setAttribute("aria-label", `Load scanned ${item.typeLabel}: ${item.raw}`);
+
+      const left = document.createElement("div");
+      left.style.cssText = "display: flex; align-items: center; gap: 0.5rem; overflow: hidden; flex: 1;";
+
+      const badge = document.createElement("span");
+      badge.textContent = item.icon || "📄";
+      left.appendChild(badge);
+
+      const content = document.createElement("span");
+      content.className = "hist-content";
+      content.textContent = item.raw;
+      left.appendChild(content);
+
+      const time = document.createElement("span");
+      time.className = "hist-time";
+      time.textContent = item.timestamp;
+
+      row.appendChild(left);
+      row.appendChild(time);
+
+      row.addEventListener("click", () => {
+        handleSuccessfulDecode(item.raw, false);
+      });
+      row.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleSuccessfulDecode(item.raw, false);
+        }
+      });
+
+      historyList.appendChild(row);
+    });
+  }
+
+  btnClearHistory?.addEventListener("click", () => {
+    safeRemoveStorage(HISTORY_KEY);
+    renderHistory();
+    showToast("Scan history cleared", "normal");
+  });
+
+  // Display decoded result in UI
+  function displayResult(parsed) {
+    currentScanResult = parsed;
+    if (emptyState) emptyState.style.display = "none";
+    if (activeResult) activeResult.style.display = "block";
+    if (statusBadge) {
+      statusBadge.textContent = "Decoded Successfully";
+      statusBadge.style.color = "var(--success)";
+    }
+
+    if (typeIcon) typeIcon.textContent = parsed.icon;
+    if (typeLabel) typeLabel.textContent = parsed.typeLabel;
+    if (resultTime) {
+      resultTime.textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    }
+    if (resultRaw) {
+      resultRaw.textContent = parsed.raw;
+    }
+
+    // Render structured key-value details safely via DOM
+    if (resultDetails) {
+      resultDetails.innerHTML = "";
+      const entries = Object.entries(parsed.details || {});
+      if (entries.length > 0) {
+        entries.forEach(([key, val]) => {
+          const row = document.createElement("div");
+          row.className = "scan-detail-row";
+
+          const kSpan = document.createElement("span");
+          kSpan.className = "scan-detail-key";
+          kSpan.textContent = key;
+
+          const vSpan = document.createElement("span");
+          vSpan.className = "scan-detail-val";
+          vSpan.textContent = String(val);
+
+          row.appendChild(kSpan);
+          row.appendChild(vSpan);
+          resultDetails.appendChild(row);
+        });
+        resultDetails.style.display = "flex";
+      } else {
+        resultDetails.style.display = "none";
+      }
+    }
+
+    // Open Link action (Safe URL strictly enforced)
+    if (btnOpenLink) {
+      if (parsed.isSafeUrl && parsed.safeUrl) {
+        btnOpenLink.href = parsed.safeUrl;
+        btnOpenLink.style.display = "inline-flex";
+        btnOpenLink.textContent = "";
+        const icon = document.createElement("span");
+        icon.textContent = "🔗 ";
+        btnOpenLink.appendChild(icon);
+        btnOpenLink.appendChild(document.createTextNode("Open Link"));
+      } else {
+        btnOpenLink.style.display = "none";
+        btnOpenLink.removeAttribute("href");
+      }
+    }
+  }
+
+  function handleSuccessfulDecode(rawText, shouldSave = true) {
+    const parsed = parseQrPayload(rawText);
+    displayResult(parsed);
+    if (shouldSave) {
+      saveScanToHistory(parsed);
+      try {
+        if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
+      } catch {}
+      showToast(`Scanned ${parsed.typeLabel}!`, "success");
+    }
+  }
+
+  // Camera Management
+  async function startCamera() {
+    if (isScanning) return;
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("Camera API is not supported in this browser or environment.");
+      }
+
+      setCameraUIState("starting");
+      
+      const constraints = {
+        video: {
+          facingMode: { ideal: currentCameraFacing },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      };
+
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch {
+        // Fallback: try basic video without constraints
+        mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      }
+
+      if (video) {
+        video.srcObject = mediaStream;
+        await video.play();
+      }
+
+      videoTrack = mediaStream.getVideoTracks()[0];
+      isScanning = true;
+      setCameraUIState("active");
+
+      // Check device capabilities
+      checkCameraCapabilities();
+
+      // Start scan loop
+      requestScanFrame();
+    } catch (err) {
+      console.error("Camera access error:", err);
+      stopCamera();
+      handleCameraError(err);
+    }
+  }
+
+  function stopCamera() {
+    isScanning = false;
+    if (scanAnimationId) {
+      cancelAnimationFrame(scanAnimationId);
+      scanAnimationId = null;
+    }
+    if (mediaStream) {
+      mediaStream.getTracks().forEach(track => {
+        try { track.stop(); } catch {}
+      });
+      mediaStream = null;
+    }
+    videoTrack = null;
+    if (video) video.srcObject = null;
+    setCameraUIState("stopped");
+  }
+
+  function setCameraUIState(state) {
+    if (state === "active") {
+      if (stoppedState) stoppedState.style.display = "none";
+      if (overlay) overlay.style.display = "flex";
+      if (btnToggleCameraText) btnToggleCameraText.textContent = "Stop Camera";
+      if (btnToggleCameraIcon) btnToggleCameraIcon.textContent = "⏹️";
+      if (statusText) statusText.textContent = "Camera active: Align any QR code within the cyan corners to scan.";
+      if (statusNotice) {
+        statusNotice.className = "notice-box notice-info";
+        statusNotice.style.display = "flex";
+      }
+    } else if (state === "starting") {
+      if (statusText) statusText.textContent = "Requesting camera permission...";
+    } else {
+      // Stopped
+      if (stoppedState) stoppedState.style.display = "flex";
+      if (overlay) overlay.style.display = "none";
+      if (btnToggleCameraText) btnToggleCameraText.textContent = "Start Camera";
+      if (btnToggleCameraIcon) btnToggleCameraIcon.textContent = "▶️";
+      if (btnToggleTorch) btnToggleTorch.style.display = "none";
+    }
+  }
+
+  function handleCameraError(err) {
+    let msg = "Could not start camera.";
+    if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+      msg = "Camera permission was denied. Please allow camera access in your browser/device settings, or decode using 'Decode from Image'.";
+    } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+      msg = "No camera found on this device. You can decode any QR code using 'Decode from Image'.";
+    } else if (err.name === "NotReadableError") {
+      msg = "Camera is currently being used by another application. Please close other camera apps and retry.";
+    } else {
+      msg = err.message || "Camera unavailable.";
+    }
+
+    if (statusText) statusText.textContent = msg;
+    if (statusNotice) {
+      statusNotice.className = "notice-box notice-warning";
+      statusNotice.style.display = "flex";
+    }
+    showToast(msg, "error", 4500);
+  }
+
+  async function checkCameraCapabilities() {
+    if (!videoTrack) return;
+    try {
+      const caps = typeof videoTrack.getCapabilities === "function" ? videoTrack.getCapabilities() : {};
+      if ("torch" in caps && btnToggleTorch) {
+        btnToggleTorch.style.display = "inline-flex";
+      } else if (btnToggleTorch) {
+        btnToggleTorch.style.display = "none";
+      }
+    } catch {}
+
+    try {
+      if (navigator.mediaDevices && typeof navigator.mediaDevices.enumerateDevices === "function") {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const videoInputs = devices.filter(d => d.kind === "videoinput");
+        if (videoInputs.length > 1 && btnSwitchCamera) {
+          btnSwitchCamera.style.display = "inline-flex";
+        } else if (btnSwitchCamera) {
+          btnSwitchCamera.style.display = "none";
+        }
+      }
+    } catch {}
+  }
+
+  // Camera torch toggle
+  btnToggleTorch?.addEventListener("click", async () => {
+    if (!videoTrack) return;
+    try {
+      torchEnabled = !torchEnabled;
+      await videoTrack.applyConstraints({
+        advanced: [{ torch: torchEnabled }]
+      });
+      btnToggleTorch.classList.toggle("active", torchEnabled);
+      showToast(torchEnabled ? "Torch on" : "Torch off", "normal");
+    } catch (err) {
+      console.warn("Torch error:", err);
+      showToast("Torch control unsupported on this device", "error");
+    }
+  });
+
+  // Switch camera front/back
+  btnSwitchCamera?.addEventListener("click", () => {
+    currentCameraFacing = currentCameraFacing === "environment" ? "user" : "environment";
+    stopCamera();
+    startCamera();
+  });
+
+  // Continuous Video Scan Loop
+  function requestScanFrame() {
+    if (!isScanning) return;
+    if (video && video.readyState === video.HAVE_ENOUGH_DATA && canvas && ctx) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const decodeRes = decodeQrPixels(imgData.data, canvas.width, canvas.height);
+
+      if (decodeRes.success && decodeRes.data) {
+        handleSuccessfulDecode(decodeRes.data, true);
+        stopCamera();
+        return;
+      }
+    }
+    scanAnimationId = requestAnimationFrame(requestScanFrame);
+  }
+
+  // Camera toggle buttons
+  btnToggleCamera?.addEventListener("click", () => {
+    if (isScanning) stopCamera();
+    else startCamera();
+  });
+  btnStartOverlay?.addEventListener("click", () => {
+    startCamera();
+  });
+
+  // Mode Tabs Switching
+  tabCamera?.addEventListener("click", () => {
+    tabCamera.classList.add("active");
+    tabCamera.setAttribute("aria-selected", "true");
+    tabImage?.classList.remove("active");
+    tabImage?.setAttribute("aria-selected", "false");
+    if (panelCamera) panelCamera.style.display = "block";
+    if (panelImage) panelImage.style.display = "none";
+  });
+
+  tabImage?.addEventListener("click", () => {
+    tabImage.classList.add("active");
+    tabImage.setAttribute("aria-selected", "true");
+    tabCamera?.classList.remove("active");
+    tabCamera?.setAttribute("aria-selected", "false");
+    if (panelImage) panelImage.style.display = "block";
+    if (panelCamera) panelCamera.style.display = "none";
+    stopCamera();
+  });
+
+  // Image File Decoding
+  function decodeImageFile(file) {
+    if (!file || !file.type.startsWith("image/")) {
+      showToast("Please choose an image file (PNG, JPG, WebP)", "error");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        if (imgPreview) imgPreview.src = img.src;
+        if (imgPreviewContainer) imgPreviewContainer.style.display = "block";
+
+        const offCanvas = document.createElement("canvas");
+        offCanvas.width = img.naturalWidth || img.width;
+        offCanvas.height = img.naturalHeight || img.height;
+        const offCtx = offCanvas.getContext("2d", { willReadFrequently: true });
+        if (!offCtx) {
+          showToast("Could not allocate canvas for image processing", "error");
+          return;
+        }
+
+        offCtx.drawImage(img, 0, 0);
+        const imgData = offCtx.getImageData(0, 0, offCanvas.width, offCanvas.height);
+        const result = decodeQrPixels(imgData.data, offCanvas.width, offCanvas.height);
+
+        if (result.success && result.data) {
+          handleSuccessfulDecode(result.data, true);
+        } else {
+          showToast("No readable QR code found in this image. Ensure the code is clear and unblurred.", "error", 4500);
+          if (statusBadge) {
+            statusBadge.textContent = "Unreadable Code";
+            statusBadge.style.color = "var(--danger)";
+          }
+        }
+      };
+      img.onerror = () => {
+        showToast("Could not read image file", "error");
+      };
+      if (typeof e.target?.result === "string") {
+        img.src = e.target.result;
+      }
+    };
+    reader.onerror = () => {
+      showToast("Failed to read file from storage", "error");
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // File input change
+  fileInput?.addEventListener("change", (e) => {
+    const target = e.target;
+    const file = target?.files?.[0];
+    if (file) decodeImageFile(file);
+  });
+
+  btnBrowseFile?.addEventListener("click", () => {
+    fileInput?.click();
+  });
+
+  // Dropzone interactions
+  dropZone?.addEventListener("click", (e) => {
+    if (e.target !== btnBrowseFile) fileInput?.click();
+  });
+  dropZone?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      fileInput?.click();
+    }
+  });
+  dropZone?.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    dropZone.classList.add("dragover");
+  });
+  dropZone?.addEventListener("dragleave", () => {
+    dropZone.classList.remove("dragover");
+  });
+  dropZone?.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropZone.classList.remove("dragover");
+    const file = e.dataTransfer?.files?.[0];
+    if (file) decodeImageFile(file);
+  });
+
+  btnClearImage?.addEventListener("click", () => {
+    if (fileInput) fileInput.value = "";
+    if (imgPreview) imgPreview.src = "";
+    if (imgPreviewContainer) imgPreviewContainer.style.display = "none";
+  });
+
+  // Result card actions
+  btnCopyResult?.addEventListener("click", () => {
+    if (!currentScanResult || !currentScanResult.raw) {
+      showToast("No decoded content to copy", "error");
+      return;
+    }
+    copyTextToClipboard(currentScanResult.raw, "Scanned content copied to clipboard!");
+  });
+
+  btnShareResult?.addEventListener("click", async () => {
+    if (!currentScanResult || !currentScanResult.raw) {
+      showToast("No decoded content to share", "error");
+      return;
+    }
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Scanned ${currentScanResult.typeLabel}`,
+          text: currentScanResult.raw
+        });
+        showToast("Shared successfully", "success");
+      } catch (err) {
+        if (err.name !== "AbortError") {
+          copyTextToClipboard(currentScanResult.raw, "Copied content to clipboard instead");
+        }
+      }
+    } else {
+      copyTextToClipboard(currentScanResult.raw, "Sharing unsupported: Copied content to clipboard!");
+    }
+  });
+
+  btnResetScan?.addEventListener("click", () => {
+    currentScanResult = null;
+    if (emptyState) emptyState.style.display = "block";
+    if (activeResult) activeResult.style.display = "none";
+    if (statusBadge) {
+      statusBadge.textContent = "Awaiting Scan";
+      statusBadge.style.color = "var(--text-muted)";
+    }
+    if (panelCamera && panelCamera.style.display !== "none") {
+      startCamera();
+    }
+  });
+
+  // Initial render of history
+  renderHistory();
+
+  return {
+    stopCamera
+  };
 }
 
 /* ==========================================================================
@@ -776,6 +1393,10 @@ export function initInvoiceTool() {
   }
 
   function addRow(desc = "", qty = 1, price = 0) {
+    // Prevent zero or negative quantity items from being added
+    const safeQty = Math.max(1, validateQuantity(qty) || 1);
+    const safePrice = Math.max(0, validatePrice(price) || 0);
+
     const tr = document.createElement("tr");
 
     // td 1: Description
@@ -790,7 +1411,7 @@ export function initInvoiceTool() {
     inputDesc.value = desc;
     tdDesc.appendChild(inputDesc);
 
-    // td 2: Quantity
+    // td 2: Quantity (strictly >= 1)
     const tdQty = document.createElement("td");
     tdQty.style.width = "70px";
     const inputQty = document.createElement("input");
@@ -802,7 +1423,29 @@ export function initInvoiceTool() {
     inputQty.style.padding = "4px 8px";
     inputQty.style.textAlign = "center";
     inputQty.setAttribute("aria-label", "Quantity");
-    inputQty.value = String(qty);
+    inputQty.value = String(safeQty);
+
+    inputQty.addEventListener("input", () => {
+      const val = Number(inputQty.value);
+      if (!Number.isFinite(val) || val < 1) {
+        inputQty.style.borderColor = "var(--accent-danger)";
+      } else {
+        inputQty.style.borderColor = "";
+      }
+      calculateTotals();
+    });
+
+    inputQty.addEventListener("blur", () => {
+      const val = Number(inputQty.value);
+      if (!Number.isFinite(val) || val < 1) {
+        inputQty.value = "1";
+        inputQty.style.borderColor = "";
+        calculateTotals();
+      } else {
+        inputQty.value = String(Math.floor(val));
+      }
+    });
+
     tdQty.appendChild(inputQty);
 
     // td 3: Unit Price
@@ -817,7 +1460,27 @@ export function initInvoiceTool() {
     inputPrice.style.padding = "4px 8px";
     inputPrice.style.textAlign = "right";
     inputPrice.setAttribute("aria-label", "Unit price");
-    inputPrice.value = String(price);
+    inputPrice.value = String(safePrice);
+
+    inputPrice.addEventListener("input", () => {
+      const val = Number(inputPrice.value);
+      if (!Number.isFinite(val) || val < 0) {
+        inputPrice.style.borderColor = "var(--accent-danger)";
+      } else {
+        inputPrice.style.borderColor = "";
+      }
+      calculateTotals();
+    });
+
+    inputPrice.addEventListener("blur", () => {
+      const val = Number(inputPrice.value);
+      if (!Number.isFinite(val) || val < 0) {
+        inputPrice.value = "0";
+        inputPrice.style.borderColor = "";
+        calculateTotals();
+      }
+    });
+
     tdPrice.appendChild(inputPrice);
 
     // td 4: Row Total
@@ -826,7 +1489,7 @@ export function initInvoiceTool() {
     tdTotal.style.textAlign = "right";
     tdTotal.style.fontWeight = "600";
     tdTotal.className = "inv-item-total";
-    tdTotal.textContent = formatCurrency(validateQuantity(qty) * validatePrice(price), getCurrencySymbol());
+    tdTotal.textContent = formatCurrency(safeQty * safePrice, getCurrencySymbol());
 
     // td 5: Delete button
     const tdDel = document.createElement("td");
@@ -1007,8 +1670,9 @@ export function initMobileTestingGuide() {
    PART 7: NAVIGATION CONTROLLER
    ========================================================================== */
 
-export function initNavigation() {
+export function initNavigation(scannerController = null) {
   const views = {
+    scanner: document.getElementById("scannerToolView"),
     qr: document.getElementById("qrToolView"),
     bio: document.getElementById("bioToolView"),
     product: document.getElementById("productToolView"),
@@ -1021,6 +1685,11 @@ export function initNavigation() {
   const bottomNavItems = document.querySelectorAll(".bottom-nav-item");
 
   function switchTab(tabKey) {
+    // If navigating away from scanner, stop the camera
+    if (tabKey !== "scanner" && scannerController && typeof scannerController.stopCamera === "function") {
+      scannerController.stopCamera();
+    }
+
     Object.keys(views).forEach(key => {
       if (views[key]) {
         views[key].classList.toggle("active", key === tabKey);
@@ -1045,11 +1714,23 @@ export function initNavigation() {
   });
 
   bottomNavItems.forEach(item => {
-    item.addEventListener("click", () => switchTab(item.dataset.tab));
+    linkOrBtnListener(item, () => switchTab(item.dataset.tab));
   });
 
-  document.getElementById("btnHeaderTestPhone")?.addEventListener("click", () => {
-    switchTab("guide");
+  function linkOrBtnListener(el, fn) {
+    el.addEventListener("click", fn);
+  }
+
+  document.getElementById("btnHeaderScanner")?.addEventListener("click", () => {
+    switchTab("scanner");
+  });
+
+  document.getElementById("btnJumpToScanner")?.addEventListener("click", () => {
+    switchTab("scanner");
+  });
+
+  document.getElementById("btnJumpToGenerator")?.addEventListener("click", () => {
+    switchTab("qr");
   });
 
   document.querySelectorAll("[data-footer-jump]").forEach(btn => {
@@ -1058,13 +1739,15 @@ export function initNavigation() {
     });
   });
 
+  // Default initial active tab
   switchTab("qr");
 }
 
 // Global DOM Ready Initialization
 if (typeof document !== "undefined") {
   document.addEventListener("DOMContentLoaded", () => {
-    initNavigation();
+    const scanner = initQrScannerTool();
+    initNavigation(scanner);
     initQRCodeTool();
     initBioTool();
     initProductDescTool();

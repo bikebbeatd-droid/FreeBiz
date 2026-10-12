@@ -6,6 +6,8 @@
  * and the automated test suite.
  */
 
+import jsQR from "jsqr";
+
 // ---------------------------------------------------------------------------
 // 1. HTML Escaping & Sanitization (XSS Prevention)
 // ---------------------------------------------------------------------------
@@ -758,3 +760,338 @@ export function safeRemoveStorage(key) {
   }
   return false;
 }
+
+// ---------------------------------------------------------------------------
+// 8. QR Code Decoding & Payload Parsing Engine
+// ---------------------------------------------------------------------------
+
+/**
+ * Validates whether a URL is completely safe to open in a new window/tab.
+ * Strictly permits only http: and https: protocols, rejecting javascript:, data:, etc.
+ * @param {string} url
+ * @returns {boolean}
+ */
+export function isSafeUrlToOpen(url) {
+  if (!url || typeof url !== "string") return false;
+  const trimmed = url.trim();
+  const lower = trimmed.toLowerCase();
+
+  // Reject dangerous schemes
+  if (
+    lower.startsWith("javascript:") ||
+    lower.startsWith("data:") ||
+    lower.startsWith("vbscript:") ||
+    lower.startsWith("file:")
+  ) {
+    return false;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    // If lacks protocol, check if valid web domain
+    if (/^[a-zA-Z0-9][-a-zA-Z0-9]*(\.[a-zA-Z0-9][-a-zA-Z0-9]*)+(\/.*)?$/i.test(trimmed)) {
+      try {
+        const withProtocol = new URL("https://" + trimmed);
+        return withProtocol.protocol === "https:";
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  }
+}
+
+/**
+ * Decodes raw RGBA pixel data using jsQR.
+ * Supports standard and inverted (dark-on-light and light-on-dark) codes.
+ * @param {Uint8ClampedArray} data 
+ * @param {number} width 
+ * @param {number} height 
+ * @returns {{ success: boolean, data?: string, location?: any, error?: string }}
+ */
+export function decodeQrPixels(data, width, height) {
+  if (!data || !width || !height || width <= 0 || height <= 0) {
+    return { success: false, error: "Invalid image pixel dimensions for QR decoding" };
+  }
+
+  try {
+    // Attempt detection with both standard and inverted attempts
+    const code = jsQR(data, width, height, { inversionAttempts: "attemptBoth" });
+
+    if (code && code.data) {
+      return {
+        success: true,
+        data: code.data,
+        location: code.location
+      };
+    }
+
+    return {
+      success: false,
+      error: "No readable QR code found in the image. Ensure the code is clear, well-lit, and unblurred."
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: "QR decoding failed: " + (err instanceof Error ? err.message : String(err))
+    };
+  }
+}
+
+/**
+ * Parses any decoded QR payload string into structured metadata and actionable details.
+ * @param {string} raw
+ * @returns {{
+ *   type: "url" | "wifi" | "vcard" | "phone" | "whatsapp" | "email" | "text" | "unknown",
+ *   typeLabel: string,
+ *   icon: string,
+ *   raw: string,
+ *   isSafeUrl: boolean,
+ *   safeUrl: string | null,
+ *   details: Record<string, any>
+ * }}
+ */
+export function parseQrPayload(raw) {
+  if (!raw || typeof raw !== "string" || !raw.trim()) {
+    return {
+      type: "unknown",
+      typeLabel: "Empty",
+      icon: "❓",
+      raw: "",
+      isSafeUrl: false,
+      safeUrl: null,
+      details: {}
+    };
+  }
+
+  const str = raw.trim();
+
+  // 1. Wi-Fi MECARD Protocol (WIFI:S:...;T:...;P:...;;)
+  if (/^WIFI:/i.test(str)) {
+    const unescapeMecard = (val) =>
+      val ? val.replace(/\\([\\;,":])/g, "$1") : "";
+
+    const ssidMatch = str.match(/(?:^|;|:)S:((?:\\;|[^;])*)/i);
+    const typeMatch = str.match(/(?:^|;|:)T:([^;]*)/i);
+    const passMatch = str.match(/(?:^|;|:)P:((?:\\;|[^;])*)/i);
+    const hiddenMatch = str.match(/(?:^|;|:)H:(true|false)/i);
+
+    const ssid = ssidMatch ? unescapeMecard(ssidMatch[1]) : "Unknown Network";
+    const enc = typeMatch ? typeMatch[1].toUpperCase() : "WPA";
+    const pass = passMatch ? unescapeMecard(passMatch[1]) : "";
+    const hidden = hiddenMatch ? hiddenMatch[1].toLowerCase() === "true" : false;
+
+    return {
+      type: "wifi",
+      typeLabel: "Wi-Fi Network",
+      icon: "📶",
+      raw: str,
+      isSafeUrl: false,
+      safeUrl: null,
+      details: {
+        ssid,
+        encryption: enc === "NOPASS" ? "Open (No Password)" : enc,
+        password: pass || "(None)",
+        hidden: hidden ? "Yes" : "No"
+      }
+    };
+  }
+
+  // 2. vCard 2.1 / 3.0 / 4.0 Contact Card
+  if (/^BEGIN:VCARD/i.test(str)) {
+    const unescapeVcard = (val) =>
+      val ? val.replace(/\\([\\;,])/g, "$1").trim() : "";
+
+    const fnMatch = str.match(/(?:^|\r?\n)FN(?::|;[^:]*:)(.*)/i);
+    const telMatch = str.match(/(?:^|\r?\n)TEL(?::|;[^:]*:)(.*)/i);
+    const emailMatch = str.match(/(?:^|\r?\n)EMAIL(?::|;[^:]*:)(.*)/i);
+    const orgMatch = str.match(/(?:^|\r?\n)ORG(?::|;[^:]*:)(.*)/i);
+    const titleMatch = str.match(/(?:^|\r?\n)TITLE(?::|;[^:]*:)(.*)/i);
+    const urlMatch = str.match(/(?:^|\r?\n)URL(?::|;[^:]*:)(.*)/i);
+
+    const name = fnMatch ? unescapeVcard(fnMatch[1]) : "Unnamed Contact";
+    const phone = telMatch ? unescapeVcard(telMatch[1]) : "";
+    const email = emailMatch ? unescapeVcard(emailMatch[1]) : "";
+    const org = orgMatch ? unescapeVcard(orgMatch[1]) : "";
+    const title = titleMatch ? unescapeVcard(titleMatch[1]) : "";
+    const vcardUrl = urlMatch ? unescapeVcard(urlMatch[1]) : "";
+
+    return {
+      type: "vcard",
+      typeLabel: "Contact Card (vCard)",
+      icon: "👤",
+      raw: str,
+      isSafeUrl: isSafeUrlToOpen(vcardUrl),
+      safeUrl: isSafeUrlToOpen(vcardUrl) ? vcardUrl : null,
+      details: {
+        name,
+        phone,
+        email,
+        organization: org,
+        title,
+        website: vcardUrl
+      }
+    };
+  }
+
+  // 3. WhatsApp Direct Chat (https://wa.me/ or api.whatsapp.com/send)
+  if (/^https?:\/\/(wa\.me|api\.whatsapp\.com\/send)/i.test(str)) {
+    let phone = "";
+    let message = "";
+    try {
+      const parsed = new URL(str);
+      if (parsed.hostname === "wa.me") {
+        phone = parsed.pathname.replace(/^\//, "");
+        message = parsed.searchParams.get("text") || "";
+      } else {
+        phone = parsed.searchParams.get("phone") || "";
+        message = parsed.searchParams.get("text") || "";
+      }
+    } catch {
+      // fallback regex
+    }
+
+    return {
+      type: "whatsapp",
+      typeLabel: "WhatsApp Chat",
+      icon: "💬",
+      raw: str,
+      isSafeUrl: true,
+      safeUrl: str,
+      details: {
+        phone: phone ? "+" + phone.replace(/^\+/, "") : "Specified in link",
+        message: message || "(None)",
+        link: str
+      }
+    };
+  }
+
+  // 4. Telephone Call (tel:...)
+  if (/^tel:/i.test(str)) {
+    const phone = str.replace(/^tel:/i, "").trim();
+    return {
+      type: "phone",
+      typeLabel: "Phone Number",
+      icon: "📞",
+      raw: str,
+      isSafeUrl: false,
+      safeUrl: null,
+      details: {
+        phone,
+        action: "Call " + phone
+      }
+    };
+  }
+
+  // 5. Email (mailto:...)
+  if (/^mailto:/i.test(str)) {
+    const mailto = str.replace(/^mailto:/i, "").trim();
+    const parts = mailto.split("?");
+    const email = parts[0];
+    return {
+      type: "email",
+      typeLabel: "Email Message",
+      icon: "✉️",
+      raw: str,
+      isSafeUrl: false,
+      safeUrl: null,
+      details: {
+        email
+      }
+    };
+  }
+
+  // 6. Web Link (http://, https://, or raw web domain)
+  if (isSafeUrlToOpen(str)) {
+    let normalized = str;
+    if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//i.test(normalized)) {
+      normalized = "https://" + normalized;
+    }
+    return {
+      type: "url",
+      typeLabel: "Website Link",
+      icon: "🌐",
+      raw: str,
+      isSafeUrl: true,
+      safeUrl: normalized,
+      details: {
+        url: normalized
+      }
+    };
+  }
+
+  // 7. Fallback: Plain Text
+  return {
+    type: "text",
+    typeLabel: "Plain Text",
+    icon: "📄",
+    raw: str,
+    isSafeUrl: false,
+    safeUrl: null,
+    details: {
+      length: str.length,
+      lines: str.split(/\r?\n/).length
+    }
+  };
+}
+
+/**
+ * Asynchronously converts an HTMLCanvasElement into a PNG Blob,
+ * validating byte integrity before returning.
+ * @param {HTMLCanvasElement} canvas
+ * @returns {Promise<{ success: boolean, blob?: Blob, size?: number, error?: string }>}
+ */
+export function createQrPngBlob(canvas) {
+  return new Promise((resolve) => {
+    if (!canvas || typeof canvas.toBlob !== "function") {
+      resolve({ success: false, error: "Canvas element unavailable for PNG generation" });
+      return;
+    }
+
+    canvas.toBlob((blob) => {
+      if (!blob || blob.size < 64) {
+        resolve({
+          success: false,
+          error: "Generated image blob is empty or corrupted (size < 64 bytes)"
+        });
+        return;
+      }
+      resolve({
+        success: true,
+        blob,
+        size: blob.size
+      });
+    }, "image/png");
+  });
+}
+
+/**
+ * Triggers a browser/PWA file download using a Blob and clean Object URL.
+ * Falls back safely if Object URL fails.
+ * @param {string} filename
+ * @param {Blob} blob
+ * @returns {boolean}
+ */
+export function triggerBlobDownload(filename, blob) {
+  try {
+    if (typeof window === "undefined" || typeof document === "undefined") return false;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.style.display = "none";
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 1000);
+    return true;
+  } catch (err) {
+    console.error("Blob download trigger error:", err);
+    return false;
+  }
+}
+
