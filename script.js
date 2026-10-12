@@ -7,6 +7,9 @@
  */
 
 import QRCode from "qrcode";
+import { Capacitor } from "@capacitor/core";
+import { Filesystem, Directory } from "@capacitor/filesystem";
+import { Share } from "@capacitor/share";
 import {
   escapeHtml,
   validateAndFormatUrl,
@@ -350,42 +353,68 @@ export function initQRCodeTool() {
     });
   });
 
-  // Download PNG (Reliable Blob + Object URL with Data URL fallback)
+  // Save a QR image through Android's native share sheet in Capacitor,
+  // or through a browser download outside the native app.
+  async function saveOrShareQrPng(blob, filename, intent = "download") {
+    if (Capacitor.isNativePlatform()) {
+      const reader = new FileReader();
+      const dataUrl = await new Promise((resolve, reject) => {
+        reader.onload = () => resolve(String(reader.result || ""));
+        reader.onerror = () => reject(new Error("Could not read generated PNG"));
+        reader.readAsDataURL(blob);
+      });
+      const base64 = dataUrl.split(",")[1];
+      if (!base64) throw new Error("Could not encode PNG for Android");
+      const saved = await Filesystem.writeFile({
+        path: filename,
+        data: base64,
+        directory: Directory.Cache,
+        recursive: true
+      });
+      await Share.share({
+        title: "FreeBiz QR Code",
+        text: `QR code image — ${currentQRData}`,
+        url: saved.uri,
+        dialogTitle: intent === "download" ? "Save QR image" : "Share QR image"
+      });
+      showToast("QR image is ready. Choose a save destination in the Android share menu.", "success");
+      return true;
+    }
+
+    if (intent === "share" && navigator.canShare) {
+      const file = new File([blob], filename, { type: "image/png" });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: "FreeBiz QR Code", text: currentQRData });
+        showToast("QR image shared.", "success");
+        return true;
+      }
+    }
+
+    const ok = triggerBlobDownload(filename, blob);
+    if (!ok) throw new Error("Browser blocked the download. Try Share / Save Image instead.");
+    showToast(`Download started: ${filename}`, "success");
+    return true;
+  }
+
   btnDownloadPng?.addEventListener("click", async () => {
     if (!currentQRData) {
       showToast("Please enter content to generate a QR code first.", "error");
       return;
     }
     const filename = `freebiz-qr-${activeType}-${Date.now()}.png`;
+    btnDownloadPng.disabled = true;
     try {
       const blobRes = await createQrPngBlob(canvas);
-      if (blobRes.success && blobRes.blob) {
-        const ok = triggerBlobDownload(filename, blobRes.blob);
-        if (ok) {
-          showToast(`Downloaded ${filename}`, "success");
-          return;
-        }
-      }
-      // Fallback to dataURL if Blob download failed
-      const dataUrl = canvas.toDataURL("image/png");
-      if (dataUrl && dataUrl.length > 50) {
-        const link = document.createElement("a");
-        link.download = filename;
-        link.href = dataUrl;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        showToast("Downloaded QR Code as PNG", "success");
-        return;
-      }
-      showToast("Could not download image. Please use 'Share / Save Image'.", "error");
+      if (!blobRes.success || !blobRes.blob) throw new Error(blobRes.error || "PNG generation failed");
+      await saveOrShareQrPng(blobRes.blob, filename, "download");
     } catch (err) {
-      console.error("PNG download error:", err);
-      showToast("Download failed: " + (err instanceof Error ? err.message : String(err)), "error");
+      console.error("PNG save error:", err);
+      if (err?.name !== "AbortError") showToast("Image not saved: " + (err instanceof Error ? err.message : String(err)), "error");
+    } finally {
+      btnDownloadPng.disabled = false;
     }
   });
 
-  // Share / Save Image (Android & Mobile Native Share API)
   const btnShareQrImage = document.getElementById("btnShareQrImage");
   btnShareQrImage?.addEventListener("click", async () => {
     if (!currentQRData) {
@@ -393,30 +422,16 @@ export function initQRCodeTool() {
       return;
     }
     const filename = `freebiz-qr-${activeType}-${Date.now()}.png`;
+    btnShareQrImage.disabled = true;
     try {
       const blobRes = await createQrPngBlob(canvas);
-      if (!blobRes.success || !blobRes.blob) {
-        showToast("Could not prepare QR image for sharing", "error");
-        return;
-      }
-      const file = new File([blobRes.blob], filename, { type: "image/png" });
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: "FreeBiz QR Code",
-          text: `Scan this QR code: ${currentQRData}`
-        });
-        showToast("QR Code shared successfully!", "success");
-      } else {
-        // Fallback: trigger blob download
-        triggerBlobDownload(filename, blobRes.blob);
-        showToast("Saved QR Code to device", "success");
-      }
+      if (!blobRes.success || !blobRes.blob) throw new Error(blobRes.error || "PNG generation failed");
+      await saveOrShareQrPng(blobRes.blob, filename, "share");
     } catch (err) {
-      if (err.name !== "AbortError") {
-        console.error("Share error:", err);
-        showToast("Could not share image", "error");
-      }
+      console.error("Share error:", err);
+      if (err?.name !== "AbortError") showToast("Could not share image: " + (err instanceof Error ? err.message : String(err)), "error");
+    } finally {
+      btnShareQrImage.disabled = false;
     }
   });
 
