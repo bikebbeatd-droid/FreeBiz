@@ -53,10 +53,7 @@ jobs:
       - name: Verify installed Capacitor tooling
         run: npx cap --version
 
-      - name: Generate Android wrapper
-        run: npx cap add android
-
-      - name: Copy web build into Android project
+      - name: Sync web build into existing Android project
         run: npx cap sync android
 
       - name: Build installable debug APK
