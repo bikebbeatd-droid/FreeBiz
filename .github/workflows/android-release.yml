@@ -45,7 +45,7 @@ jobs:
           "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Install web dependencies
-        run: npm ci
+        run: npm install
 
       - name: Build web app
         run: npm run build
