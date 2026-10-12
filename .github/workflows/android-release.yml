@@ -50,8 +50,8 @@ jobs:
       - name: Build web app
         run: npm run build
 
-      - name: Install Capacitor Android tooling
-        run: npm install --no-save --package-lock=false @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7
+      - name: Verify installed Capacitor tooling
+        run: npx cap --version
 
       - name: Generate Android wrapper
         run: npx cap add android
