@@ -18,7 +18,9 @@
     "@capacitor/core": "^8.5.3",
     "jsqr": "^1.4.0",
     "pngjs": "^7.0.0",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "@capacitor/filesystem": "^8.0.0",
+    "@capacitor/share": "^8.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
