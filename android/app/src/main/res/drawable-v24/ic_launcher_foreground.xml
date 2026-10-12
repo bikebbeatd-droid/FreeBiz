@@ -3,77 +3,15 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-
-    <!-- Cyan Viewfinder Scanning Corners -->
-    <path
-        android:pathData="M26,38 L26,26 L38,26"
-        android:strokeColor="#00F0FF"
-        android:strokeWidth="3.5"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
-    <path
-        android:pathData="M82,38 L82,26 L70,26"
-        android:strokeColor="#00F0FF"
-        android:strokeWidth="3.5"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
-    <path
-        android:pathData="M26,70 L26,82 L38,82"
-        android:strokeColor="#00F0FF"
-        android:strokeWidth="3.5"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
-    <path
-        android:pathData="M82,70 L82,82 L70,82"
-        android:strokeColor="#00F0FF"
-        android:strokeWidth="3.5"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
-
-    <!-- QR Finder Pattern 1: Top-Left (Outer box white, inner cutout, center dot cyan) -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:fillType="evenOdd"
-        android:pathData="M33,33 h16 v16 h-16 z M36,36 v10 h10 v-10 z" />
-    <path
-        android:fillColor="#00F0FF"
-        android:pathData="M38,38 h6 v6 h-6 z" />
-
-    <!-- QR Finder Pattern 2: Top-Right -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:fillType="evenOdd"
-        android:pathData="M59,33 h16 v16 h-16 z M62,36 v10 h10 v-10 z" />
-    <path
-        android:fillColor="#00F0FF"
-        android:pathData="M64,38 h6 v6 h-6 z" />
-
-    <!-- QR Finder Pattern 3: Bottom-Left -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:fillType="evenOdd"
-        android:pathData="M33,59 h16 v16 h-16 z M36,62 v10 h10 v-10 z" />
-    <path
-        android:fillColor="#00F0FF"
-        android:pathData="M38,64 h6 v6 h-6 z" />
-
-    <!-- Geometric QR Data Modules -->
-    <path
-        android:fillColor="#00F0FF"
-        android:pathData="M52,33 h4 v4 h-4 z M52,41 h4 v4 h-4 z M33,52 h4 v4 h-4 z M56,52 h4 v4 h-4 z M68,52 h4 v4 h-4 z M60,60 h4 v4 h-4 z M68,68 h4 v4 h-4 z M52,68 h4 v4 h-4 z" />
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M41,52 h4 v4 h-4 z M48,52 h4 v4 h-4 z M64,52 h4 v4 h-4 z M52,59 h4 v4 h-4 z M68,60 h4 v4 h-4 z M60,68 h4 v4 h-4 z" />
-
-    <!-- Laser Scanning Beam (Cyan glowing line) -->
-    <path
-        android:pathData="M22,54 L86,54"
-        android:strokeColor="#00F0FF"
-        android:strokeWidth="1.8"
-        android:strokeLineCap="round" />
-    <path
-        android:pathData="M36,54 L72,54"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="1.0"
-        android:strokeLineCap="round" />
+    <path android:fillColor="#00000000" android:pathData="M0,0h108v108h-108z"/>
+    <path android:pathData="M26,39V27Q26,23 30,23H42 M66,23H78Q82,23 82,27V39 M26,69V81Q26,85 30,85H42 M66,85H78Q82,85 82,81V69"
+        android:strokeColor="#B8FFE4" android:strokeWidth="3.8" android:strokeLineCap="round" android:strokeLineJoin="round"/>
+    <path android:fillColor="#FFFFFF" android:fillType="evenOdd" android:pathData="M32,31h18v18h-18z M36,35v10h10v-10z"/>
+    <path android:fillColor="#37D6A1" android:pathData="M38,37h6v6h-6z"/>
+    <path android:fillColor="#FFFFFF" android:fillType="evenOdd" android:pathData="M58,31h18v18h-18z M62,35v10h10v-10z"/>
+    <path android:fillColor="#37D6A1" android:pathData="M64,37h6v6h-6z"/>
+    <path android:fillColor="#FFFFFF" android:fillType="evenOdd" android:pathData="M32,57h18v18h-18z M36,61v10h10v-10z"/>
+    <path android:fillColor="#37D6A1" android:pathData="M38,63h6v6h-6z M52,31h5v5h-5z M52,41h5v5h-5z M52,51h5v5h-5z M52,61h5v5h-5z M62,51h5v5h-5z M72,51h5v5h-5z M62,61h5v5h-5z M72,67h5v5h-5z M62,71h5v5h-5z"/>
+    <path android:pathData="M21,54H87" android:strokeColor="#37D6A1" android:strokeWidth="1.8" android:strokeLineCap="round"/>
+    <path android:pathData="M39,54H69" android:strokeColor="#FFFFFF" android:strokeWidth="1" android:strokeLineCap="round"/>
 </vector>
