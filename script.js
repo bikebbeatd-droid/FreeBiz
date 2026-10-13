@@ -643,7 +643,9 @@ export function initQrScannerTool() {
       left.style.cssText = "display: flex; align-items: center; gap: 0.5rem; overflow: hidden; flex: 1;";
 
       const badge = document.createElement("span");
-      badge.textContent = item.icon || "📄";
+      const historyIconNames = { "📄": "text", "📷": "camera", "🔗": "link", "🌐": "globe", "📶": "phone", "✉️": "text", "📞": "phone", "📝": "text", "📍": "info" };
+      const historyIcon = historyIconNames[item.icon] || "qr";
+      badge.innerHTML = '<svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#icon-' + historyIcon + '"></use></svg>';
       left.appendChild(badge);
 
       const content = document.createElement("span");
@@ -1669,7 +1671,7 @@ export function initMobileTestingGuide() {
     if (label) {
       label.textContent = `${checked} of ${total} tests verified`;
       if (checked === total) {
-        label.textContent = `All ${total} mobile tests verified! 🎉`;
+        label.textContent = `All ${total} mobile tests verified!`;
       }
     }
   }
