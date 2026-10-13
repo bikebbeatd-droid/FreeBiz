@@ -141,8 +141,9 @@ export function downloadTextFile(filename, content, mimeType = "text/plain;chars
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    showToast(`Downloaded ${filename}`, "success");
+    // Keep the object URL alive briefly so mobile browsers/WebView can start the download.
+    window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+    showToast(`Download started: ${filename}`, "normal");
   } catch (err) {
     console.error("Download failed:", err);
     showToast("Download failed. Please check browser permissions.", "error");
