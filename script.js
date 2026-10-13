@@ -688,7 +688,11 @@ export function initQrScannerTool() {
       statusBadge.style.color = "var(--success)";
     }
 
-    if (typeIcon) typeIcon.textContent = parsed.icon;
+    if (typeIcon) {
+      const iconNames = { "📷": "camera", "🔗": "link", "🌐": "globe", "📶": "phone", "✉️": "text", "📞": "phone", "📝": "text" };
+      const iconName = iconNames[parsed.icon] || "qr";
+      typeIcon.innerHTML = '<svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#icon-' + iconName + '"></use></svg>';
+    }
     if (typeLabel) typeLabel.textContent = parsed.typeLabel;
     if (resultTime) {
       resultTime.textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -731,7 +735,7 @@ export function initQrScannerTool() {
         btnOpenLink.style.display = "inline-flex";
         btnOpenLink.textContent = "";
         const icon = document.createElement("span");
-        icon.textContent = "🔗 ";
+        icon.innerHTML = '<svg class="ui-icon" aria-hidden="true" focusable="false"><use href="#icon-link"></use></svg>';
         btnOpenLink.appendChild(icon);
         btnOpenLink.appendChild(document.createTextNode("Open Link"));
       } else {
@@ -1170,7 +1174,7 @@ export function initBioTool() {
       const btnCopy = document.createElement("button");
       btnCopy.type = "button";
       btnCopy.className = "btn btn-secondary btn-sm";
-      btnCopy.innerHTML = `<span aria-hidden="true">📋</span> Copy Bio`;
+      btnCopy.innerHTML = `<span aria-hidden="true"><svg class="ui-icon"><use href="#icon-clipboard"></use></svg></span> Copy Bio`;
       btnCopy.addEventListener("click", () => {
         copyTextToClipboard(textarea.value, "Bio copied to clipboard!");
       });
@@ -1178,7 +1182,7 @@ export function initBioTool() {
       const btnDownload = document.createElement("button");
       btnDownload.type = "button";
       btnDownload.className = "btn btn-secondary btn-sm";
-      btnDownload.innerHTML = `<span aria-hidden="true">💾</span> Save TXT`;
+      btnDownload.innerHTML = `<span aria-hidden="true"><svg class="ui-icon"><use href="#icon-save"></use></svg></span> Save TXT`;
       btnDownload.addEventListener("click", () => {
         const safeName = (name || "business").toLowerCase().replace(/[^a-z0-9]/g, "-");
         downloadTextFile(`${safeName}-bio-${idx + 1}.txt`, textarea.value);
@@ -1287,7 +1291,7 @@ export function initProductDescTool() {
     btnCopyDesc.type = "button";
     btnCopyDesc.id = "btnCopyProductDesc";
     btnCopyDesc.className = "btn btn-primary btn-sm";
-    btnCopyDesc.innerHTML = `<span aria-hidden="true">📋</span> Copy Description`;
+    btnCopyDesc.innerHTML = `<span aria-hidden="true"><svg class="ui-icon"><use href="#icon-clipboard"></use></svg></span> Copy Description`;
     btnCopyDesc.addEventListener("click", () => {
       copyTextToClipboard(textarea.value, "Product description copied to clipboard!");
     });
@@ -1296,7 +1300,7 @@ export function initProductDescTool() {
     btnCopyHtml.type = "button";
     btnCopyHtml.id = "btnCopyProductHtml";
     btnCopyHtml.className = "btn btn-secondary btn-sm";
-    btnCopyHtml.innerHTML = `<span aria-hidden="true">🌐</span> Copy HTML`;
+    btnCopyHtml.innerHTML = `<span aria-hidden="true"><svg class="ui-icon"><use href="#icon-globe"></use></svg></span> Copy HTML`;
     btnCopyHtml.addEventListener("click", () => {
       // res.htmlSnippet has all user values safely escaped via escapeHtml()
       copyTextToClipboard(res.htmlSnippet, "HTML snippet copied to clipboard!");
@@ -1306,7 +1310,7 @@ export function initProductDescTool() {
     btnDownloadTxt.type = "button";
     btnDownloadTxt.id = "btnDownloadProductTxt";
     btnDownloadTxt.className = "btn btn-secondary btn-sm";
-    btnDownloadTxt.innerHTML = `<span aria-hidden="true">💾</span> Save TXT`;
+    btnDownloadTxt.innerHTML = `<span aria-hidden="true"><svg class="ui-icon"><use href="#icon-save"></use></svg></span> Save TXT`;
     btnDownloadTxt.addEventListener("click", () => {
       const safeName = (name || "product").toLowerCase().replace(/[^a-z0-9]/g, "-");
       downloadTextFile(`${safeName}-description.txt`, textarea.value);
