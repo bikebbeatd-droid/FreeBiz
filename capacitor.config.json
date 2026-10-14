@@ -1,6 +1,6 @@
 {
-  "appId": "com.bikebbeatd.freebiz",
-  "appName": "FreeBiz",
+  "appId": "com.freebiz.qrscanner",
+  "appName": "FreeBiz QR Scanner",
   "webDir": "dist",
   "bundledWebRuntime": false
 }
