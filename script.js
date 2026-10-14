@@ -7,7 +7,11 @@
  */
 
 import QRCode from "qrcode";
-import { Capacitor } from "@capacitor/core";
+import { Capacitor, registerPlugin } from "@capacitor/core";
+import { BrowserMultiFormatReader } from "@zxing/browser";
+
+const GallerySaver = registerPlugin("GallerySaver");
+const multiFormatReader = new BrowserMultiFormatReader();
 import { Filesystem, Directory } from "@capacitor/filesystem";
 import { Share } from "@capacitor/share";
 import {
@@ -366,6 +370,12 @@ export function initQRCodeTool() {
       });
       const base64 = dataUrl.split(",")[1];
       if (!base64) throw new Error("Could not encode PNG for Android");
+      if (intent === "download") {
+        // Save directly into Android's shared Pictures/FreeBiz gallery via MediaStore.
+        await GallerySaver.savePng({ data: base64, filename });
+        showToast("QR code saved to Gallery → Pictures/FreeBiz.", "success");
+        return true;
+      }
       const saved = await Filesystem.writeFile({
         path: filename,
         data: base64,
@@ -376,9 +386,9 @@ export function initQRCodeTool() {
         title: "FreeBiz QR Code",
         text: `QR code image — ${currentQRData}`,
         url: saved.uri,
-        dialogTitle: intent === "download" ? "Save QR image" : "Share QR image"
+        dialogTitle: "Share QR image"
       });
-      showToast("QR image is ready. Choose a save destination in the Android share menu.", "success");
+      showToast("QR image is ready to share.", "success");
       return true;
     }
 
@@ -588,6 +598,7 @@ export function initQrScannerTool() {
   let currentCameraFacing = "environment";
   let torchEnabled = false;
   let currentScanResult = null;
+  let scanFrameCounter = 0;
 
   // Local History Storage
   const HISTORY_KEY = "freebiz_scan_history_v1";
@@ -928,6 +939,22 @@ export function initQrScannerTool() {
         stopCamera();
         return;
       }
+
+      // jsQR reads QR codes; ZXing also reads common 1D/2D barcodes.
+      // Run the broader decoder every few frames to keep camera scanning responsive.
+      scanFrameCounter += 1;
+      if (scanFrameCounter % 4 === 0) {
+        try {
+          const barcodeResult = multiFormatReader.decodeFromCanvas(canvas);
+          if (barcodeResult) {
+            handleSuccessfulDecode(barcodeResult.getText(), true);
+            stopCamera();
+            return;
+          }
+        } catch {
+          // No barcode in this frame is expected; continue scanning.
+        }
+      }
     }
     scanAnimationId = requestAnimationFrame(requestScanFrame);
   }
@@ -971,7 +998,7 @@ export function initQrScannerTool() {
     const reader = new FileReader();
     reader.onload = (e) => {
       const img = new Image();
-      img.onload = () => {
+      img.onload = async () => {
         if (imgPreview) imgPreview.src = img.src;
         if (imgPreviewContainer) imgPreviewContainer.style.display = "block";
 
@@ -990,12 +1017,24 @@ export function initQrScannerTool() {
 
         if (result.success && result.data) {
           handleSuccessfulDecode(result.data, true);
-        } else {
-          showToast("No readable QR code found in this image. Ensure the code is clear and unblurred.", "error", 4500);
-          if (statusBadge) {
-            statusBadge.textContent = "Unreadable Code";
-            statusBadge.style.color = "var(--danger)";
+          return;
+        }
+
+        // Multi-format fallback supports product barcodes and tougher QR images.
+        try {
+          const barcodeResult = await multiFormatReader.decodeFromImageElement(img);
+          if (barcodeResult && barcodeResult.getText()) {
+            handleSuccessfulDecode(barcodeResult.getText(), true);
+            return;
           }
+        } catch {
+          // Both decoders may fail for blurry, cropped, or unsupported images.
+        }
+
+        showToast("No readable QR code or barcode found. Try a sharper, well-lit, uncropped image.", "error", 4500);
+        if (statusBadge) {
+          statusBadge.textContent = "Unreadable Code";
+          statusBadge.style.color = "var(--danger)";
         }
       };
       img.onerror = () => {
