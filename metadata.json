@@ -1,6 +1,8 @@
 {
-  "name": "FreeBiz QR Scanner",
-  "description": "Professional 100% client-side QR scanner, generator, and mobile business utility suite. Scan QR codes via live camera or image files, customize high-resolution QR codes, and generate business tools offline.",
+  "name": "CineAI Studio — Professional AI Video Editor",
+  "description": "AI-first professional video editor with multi-track timeline, text-based editing, automated AI edit planning, real-time preview, audio ducking, and verified rendering.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

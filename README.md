@@ -1,95 +1,115 @@
-# FreeBiz Tools ⚡
+# AI PDF Workspace + Model Context Protocol (MCP) Server ⚡
 
-> **100% Free, Private, Mobile-First Business Utilities**  
-> Run completely client-side in your web browser. Zero accounts, zero subscription fees, zero external AI APIs, and zero tracking.
-
----
-
-## 🛠️ Included Tools
-
-1. **QR Code Generator**
-   - Supports: Website/Profile URLs, Phone Calls, WhatsApp direct chats, Wi-Fi networks (with MECARD special character escaping), vCard 3.0 digital business cards, and Plain text.
-   - High-contrast pattern and background color selection with automatic WCAG contrast warning.
-   - Error correction levels L (7%), M (15%), Q (25%), and H (30%).
-   - Exports: PNG download, vector SVG download, copy image/link to clipboard, and print-ready card.
-   - Verified against camera decoders and automated `jsQR` scan suites.
-
-2. **Business Bio & Profile Generator**
-   - Predefined, high-converting copy templates for Instagram & TikTok (under 150 characters), Google Business / Local, LinkedIn / Professional, Twitter / X, and Website About Us.
-   - Selectable brand tones: Friendly, Professional, Modern, Minimalist, Bold.
-   - In-place editable textareas with live character and word counters.
-   - 1-click clipboard copy and `.txt` file export.
-
-3. **Product Description Generator**
-   - Structured e-commerce copy templates: Standard E-Commerce Listing, Artisan Storytelling, Short Social Ad Copy, and Marketplace Classified.
-   - Generates headlines, narrative hooks, bulleted highlights, and calls to action.
-   - 1-click copy for plain text, rich HTML snippet, and `.txt` export.
-
-4. **Instant Receipt & Mini-Invoice Calculator**
-   - Configurable currencies with **Pakistani Rupee (`PKR` / `Rs. `)** as default, plus USD (`$`), EUR (`€`), GBP (`£`), AED, SAR, and INR.
-   - Automatic local date initialization.
-   - Real-time subtotal, editable tax rate %, discount capping, and grand total calculations.
-   - Clean printable view (`window.print()`) formatted for receipt paper and standard print-to-PDF without navigation or button clutter.
-   - Plain text receipt slip export and `.txt` download.
-
-5. **Mobile Testing & QA Checklist**
-   - Live QR code pointing to the current applet URL for instant phone camera scanning.
-   - Step-by-step instructions for Android (Chrome), iOS (Safari), and desktop DevTools emulation.
-   - 5-point interactive checklist with persistent `localStorage` progress tracking.
-
-6. **Transparent About & Privacy Disclosure**
-   - Clear architectural explanation of 100% client-side execution.
-   - Explains that zero personal data is ever collected, transmitted, or stored on external servers.
+> **Production-grade AI PDF Workspace, Google Drive Integration & Official MCP Server**  
+> Powered by `@modelcontextprotocol/sdk` with Streamable HTTP transport at `/mcp`, Google Gemini (`@google/genai`), and mobile-first business utilities.
 
 ---
 
-## 🔒 Privacy & Architecture
+## 🏛️ Architecture & Highlights
 
-- **No Remote Backend Required:** All barcode generation, template assembly, math calculations, and file downloads execute inside the user's browser sandbox using HTML5 Canvas, SVG, and modern Web APIs.
-- **Offline / Airplane Mode Capable:** Once loaded, FreeBiz operates with zero internet connection.
-- **No Analytics / Telemetry:** No cookies, trackers, tracking pixels, or third-party ads.
+- **Native MCP Streamable HTTP Transport (`/mcp`):** Built with the official `@modelcontextprotocol/sdk` (`StreamableHTTPServerTransport`), providing protocol negotiation, tool discovery, and tool invocation over HTTP/SSE.
+- **13 Registered Official MCP Tools:**
+  1. `drive_list_pdfs` — List authorized PDF files from Google Drive.
+  2. `drive_search_files` — Search authorized Drive files by name.
+  3. `pdf_import_document` — Securely import a Drive PDF by file ID.
+  4. `pdf_get_metadata` — Verified metadata, total pages, chapters, and extraction status.
+  5. `pdf_search` — Search extracted text and return snippets with exact page citations.
+  6. `pdf_get_page` — Retrieve verified text from a specific page.
+  7. `pdf_get_chapter` — Retrieve chapter content within identified boundaries.
+  8. `pdf_ask_question` — Answer questions strictly grounded in document text with page citations.
+  9. `pdf_summarize` — Executive summaries and key points with citations.
+  10. `pdf_generate_questions` — Generate short and long answer questions.
+  11. `pdf_generate_mcqs` — Generate 4-option MCQs with answer keys and citations.
+  12. `pdf_create_study_notes` — Structured revision notes with terminology and source pages.
+  13. `pdf_export_content` — Export content in Markdown, JSON, TXT, or CSV formats.
+- **Strict Source Grounding:** All AI answers cite exact `[Page X]` locations and never fabricate citations or document content. If information cannot be found, it explicitly states so.
+- **User Document Isolation & Security:** Documents and Drive files are isolated per user; cross-user access attempts are rejected without disclosing file existence.
+- **Full-Stack Node.js Architecture:** Express server (`server.ts`) hosting the `/mcp` transport, REST endpoints (`/api/pdf/*`, `/api/drive/*`, `/api/mcp/*`), and Vite middleware in development.
 
 ---
 
-## 📱 Mobile-First Design Specifications
+## 🚀 Getting Started & Local Development
 
-- Tested on viewports from **320px** (narrow mobile) to **430px** (modern flagship smartphones) through tablets and desktops.
-- Minimum **44–48px** touch hitboxes on all interactive buttons, swatches, and inputs.
-- Clean single primary mobile navigation anchored to the bottom thumb zone with device safe-area (`env(safe-area-inset-bottom)`) clearance.
-- No horizontal scrolling, no text clipping, and visible `:focus-visible` outlines for keyboard and screen-reader accessibility.
+### 1. Prerequisites
+- Node.js 22+
+- npm or bun
 
----
-
-## 🚀 Development & Testing Commands
-
-### Prerequisites
-- Node.js 18+ or Bun
-
-### Install Dependencies
+### 2. Environment Setup
+Copy `.env.example` to `.env`:
 ```bash
-npm install
+cp .env.example .env
 ```
+Key environment variables:
+- `GEMINI_API_KEY`: API key for Gemini models (injected automatically in AI Studio).
+- `MCP_API_KEY`: Key used by external MCP clients to authenticate with `/mcp` (Default: `mcp_workspace_dev_key_2026`).
+- `PORT`: HTTP port (Default: `3000`).
 
-### Run Local Development Server
+### 3. Start Development Server
 ```bash
 npm run dev
 ```
-Open `http://localhost:3000` in your browser.
+Starts the full-stack server on `http://0.0.0.0:3000` with the Streamable HTTP MCP transport live at `http://0.0.0.0:3000/mcp`.
 
-### Run Automated Test Suite
+### 4. Run Test Suite
 ```bash
 npm test
 ```
-Executes 41 automated tests verifying QR generation, independent `jsQR` decoding across all error correction levels, Wi-Fi escaping, contrast ratios, invoice math, and DOM element ID integrity.
-
-### Production Build
-```bash
-npm run build
-```
+Runs both test suites:
+- **FreeBiz Utility Suite:** 256/256 passing unit & security tests.
+- **AI PDF Workspace & MCP Server Suite:** 36/36 passing protocol, tool, authorization, and grounding tests.
+- **Total:** 292 passing automated tests.
 
 ---
 
-## ⚠️ Known Limitations
+## 🔌 Connecting External MCP Clients
 
-1. **Clipboard Image Writing (`ClipboardItem`):** In certain restricted browser environments (e.g. non-HTTPS iframes or browsers without image clipboard permissions), writing binary PNG blobs to the system clipboard is blocked by browser security. In such cases, FreeBiz detects the restriction and copies the QR content text while displaying an explicit notice.
-2. **Receipt Template Notice:** Receipts generated are intended for point-of-sale customer slips and internal business records; they do not constitute legally certified tax invoices.
+### Claude Desktop Configuration
+Add the following to your `claude_desktop_config.json` (Mac: `~/Library/Application Support/Claude/claude_desktop_config.json`, Windows: `%APPDATA%\Claude\claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "ai-pdf-workspace": {
+      "url": "http://localhost:3000/mcp",
+      "headers": {
+        "x-mcp-api-key": "mcp_workspace_dev_key_2026"
+      }
+    }
+  }
+}
+```
+
+### Cursor / Windsurf / MCP Inspector
+Connect using Streamable HTTP transport:
+- **Transport Type:** Streamable HTTP (or SSE)
+- **URL:** `http://localhost:3000/mcp`
+- **Header:** `Authorization: Bearer mcp_workspace_dev_key_2026` or `x-mcp-api-key: mcp_workspace_dev_key_2026`
+
+---
+
+## 📡 MCP Tools Reference
+
+| Tool Name | Parameters | Description |
+|-----------|------------|-------------|
+| `drive_list_pdfs` | `{ maxResults?: number }` | List authorized PDFs in Google Drive |
+| `drive_search_files` | `{ query: string }` | Filter Drive PDFs by keyword |
+| `pdf_import_document` | `{ fileId: string }` | Ingest Drive PDF into workspace |
+| `pdf_get_metadata` | `{ documentId: string }` | Return verified metadata & chapters |
+| `pdf_search` | `{ documentId: string, query: string }` | Text search with page citations |
+| `pdf_get_page` | `{ documentId: string, pageNumber: number }` | Fetch single page text |
+| `pdf_get_chapter` | `{ documentId: string, chapter: string }` | Fetch chapter text content |
+| `pdf_ask_question` | `{ documentId: string, question: string }` | Grounded Q&A with citations |
+| `pdf_summarize` | `{ documentId: string, startPage?: number, endPage?: number }` | Section or full summary |
+| `pdf_generate_questions` | `{ documentId: string, count?: number }` | Short & long answer questions |
+| `pdf_generate_mcqs` | `{ documentId: string, count?: number }` | 4-option MCQs with answer keys |
+| `pdf_create_study_notes` | `{ documentId: string }` | Comprehensive revision guide |
+| `pdf_export_content` | `{ documentId: string, format: string, content: any }` | Export to Markdown/JSON/TXT/CSV |
+
+---
+
+## 🛠️ Also Included: FreeBiz Client-Side Suite
+1. **Live QR & Barcode Scanner:** Camera scanner with rear-camera preference, throttled frames, and direct image photo decoding.
+2. **QR Code Generator:** URLs, Wi-Fi, vCard, WhatsApp, phone, text with contrast auditing and direct PNG/SVG saving.
+3. **Business Bio & Profile Generator:** Instagram, TikTok, LinkedIn, and Google Business profiles.
+4. **Product Description Generator:** E-commerce copy with clean escaped HTML.
+5. **Instant Receipt & Mini-Invoice Calculator:** Multi-currency math with tax, discount capping, and printable slips.

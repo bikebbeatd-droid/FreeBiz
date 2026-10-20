@@ -40,7 +40,14 @@ import {
   safeRemoveStorage,
   isSafeUrlToOpen,
   decodeQrPixels,
-  parseQrPayload
+  decodeBarcodePixels,
+  decodePixelsWithZxing,
+  applyContrastStretching,
+  savePngToNativeOrWeb,
+  SUPPORTED_BARCODE_FORMATS,
+  getFormatDisplayName,
+  parseQrPayload,
+  parseCsvData
 } from "../src/core.js";
 
 let passedCount = 0;
@@ -620,6 +627,183 @@ assert(roundtripDecoded.success === true, "jsQR successfully decoded generated P
 assert(roundtripDecoded.data === roundtripPayload, "Decoded content strictly matches original payload byte-for-byte with zero loss");
 
 // -------------------------------------------------------------
+// TEST SUITE 17: CSV Parser for Bulk QR Generation
+// -------------------------------------------------------------
+console.log("\nTEST SUITE 17: CSV Parser for Bulk QR Generation");
+const sampleCsv = `title,content
+"Store URL","https://freebiz.pk"
+"WhatsApp Contact","https://wa.me/923001234567"
+"Plain Wi-Fi","WIFI:S:FreeBiz;T:WPA;P:secret123;;"`;
+
+const csvResult = parseCsvData(sampleCsv);
+assert(csvResult.error === null, "CSV parsed successfully without errors");
+assert(csvResult.headers.length === 2, "CSV headers count verified (2)");
+assert(csvResult.rows.length === 3, "CSV rows count verified (3)");
+assert(csvResult.rows[0][0] === "Store URL", "First row title parsed correctly");
+assert(csvResult.rows[0][1] === "https://freebiz.pk", "First row content parsed correctly");
+
+const emptyCsvRes = parseCsvData("");
+assert(emptyCsvRes.error !== null, "Empty CSV correctly rejected with error message");
+
+// -------------------------------------------------------------
+// TEST SUITE 18: Multi-Format Barcode Engine & Formats
+// -------------------------------------------------------------
+console.log("\nTEST SUITE 18: Multi-Format Barcode Engine & Formats");
+
+assert(SUPPORTED_BARCODE_FORMATS.length >= 12, "All 12 requested barcode formats are configured");
+const expectedFormatKeys = ["QR_CODE", "CODE_128", "CODE_39", "EAN_13", "EAN_8", "UPC_A", "UPC_E", "ITF", "CODABAR", "PDF_417", "DATA_MATRIX", "AZTEC"];
+expectedFormatKeys.forEach(key => {
+  const exists = SUPPORTED_BARCODE_FORMATS.some(f => f.id === key);
+  assert(exists, `Format ${key} is present in SUPPORTED_BARCODE_FORMATS`);
+});
+
+assert(getFormatDisplayName("QR_CODE") === "QR Code", "QR_CODE mapped to 'QR Code'");
+assert(getFormatDisplayName("code_128") === "Code 128", "code_128 mapped to 'Code 128'");
+assert(getFormatDisplayName("EAN_13") === "EAN-13", "EAN_13 mapped to 'EAN-13'");
+assert(getFormatDisplayName("UPC_A") === "UPC-A", "UPC_A mapped to 'UPC-A'");
+assert(getFormatDisplayName("data_matrix") === "Data Matrix", "data_matrix mapped to 'Data Matrix'");
+assert(getFormatDisplayName("aztec") === "Aztec", "aztec mapped to 'Aztec'");
+
+// Test decodeBarcodePixels on real QR code
+const qrTestPayload = "https://freebiz.pk/barcode-suite-verified";
+const qrTestBuffer = await QRCode.toBuffer(qrTestPayload, { width: 250, margin: 2 });
+const qrPng = PNG.sync.read(qrTestBuffer);
+const bcResult = decodeBarcodePixels(qrPng.data, qrPng.width, qrPng.height);
+assert(bcResult.success === true, "decodeBarcodePixels detected QR code successfully");
+assert(bcResult.data === qrTestPayload, "decodeBarcodePixels extracted correct payload");
+assert(bcResult.format === "QR_CODE", "decodeBarcodePixels returned format QR_CODE");
+assert(bcResult.formatLabel === "QR Code", "decodeBarcodePixels returned formatLabel 'QR Code'");
+
+// -------------------------------------------------------------
+// TEST SUITE 19: Barcode Payload Parsing & Leading Zeros Preservation
+// -------------------------------------------------------------
+console.log("\nTEST SUITE 19: Barcode Payload Parsing & Leading Zeros Preservation");
+
+// 1. UPC-A with leading zero
+const upcAWithLeadingZero = "012345678905";
+const parsedUpc = parseQrPayload(upcAWithLeadingZero, "UPC_A");
+assert(parsedUpc.type === "product_barcode", "UPC-A parsed as product_barcode");
+assert(parsedUpc.raw === "012345678905", "Preserved raw value with leading zero");
+assert(parsedUpc.details["Barcode Number"] === "012345678905", "Preserved leading zero in details");
+assert(parsedUpc.details["Barcode Format"] === "UPC-A", "Format detail set to UPC-A");
+
+// 2. EAN-13 with leading zero
+const eanWithLeadingZero = "0793573189912";
+const parsedEan = parseQrPayload(eanWithLeadingZero, "EAN_13");
+assert(parsedEan.type === "product_barcode", "EAN-13 parsed as product_barcode");
+assert(parsedEan.raw === "0793573189912", "Preserved leading zero in EAN-13");
+assert(parsedEan.details["Character Count"] === 13, "EAN-13 character count is exactly 13");
+
+// 3. Code 128 with leading zeros and alphanumeric
+const code128Val = "000456ABC";
+const parsed128 = parseQrPayload(code128Val, "CODE_128");
+assert(parsed128.type === "barcode", "Code 128 parsed as barcode");
+assert(parsed128.raw === "000456ABC", "Code 128 preserved leading zeros and characters");
+assert(parsed128.formatLabel === "Code 128", "Format label is Code 128");
+
+// 4. Data Matrix
+const dmVal = "BATCH-2026-X99";
+const parsedDm = parseQrPayload(dmVal, "DATA_MATRIX");
+assert(parsedDm.format === "DATA_MATRIX", "Data Matrix format preserved");
+assert(parsedDm.formatLabel === "Data Matrix", "Data Matrix label correct");
+
+// 5. Aztec
+const aztecVal = "BOARDING-PASS-PK-786";
+const parsedAztec = parseQrPayload(aztecVal, "AZTEC");
+assert(parsedAztec.format === "AZTEC", "Aztec format preserved");
+assert(parsedAztec.formatLabel === "Aztec", "Aztec label correct");
+
+// -------------------------------------------------------------
+// TEST SUITE 20: Phone Camera Photo Preprocessing & Resiliency
+// -------------------------------------------------------------
+console.log("\nTEST SUITE 20: Phone Camera Photo Preprocessing & Resiliency");
+
+// 1. Off-center placement in large 1600x1200 simulated phone photo
+const bigWidth = 1600;
+const bigHeight = 1200;
+const bigRgba = new Uint8ClampedArray(bigWidth * bigHeight * 4);
+bigRgba.fill(240); // simulated desk/paper background
+
+// Place 250x250 QR code at offset (x=900, y=550) - off-center
+const subQrBuf = await QRCode.toBuffer("https://freebiz.pk/phone-cam-photo-success", { width: 250, margin: 2 });
+const subQrPng = PNG.sync.read(subQrBuf);
+
+const posX = 900;
+const posY = 550;
+for (let y = 0; y < subQrPng.height; y++) {
+  for (let x = 0; x < subQrPng.width; x++) {
+    const sIdx = (y * subQrPng.width + x) * 4;
+    const dIdx = ((posY + y) * bigWidth + (posX + x)) * 4;
+    bigRgba[dIdx] = subQrPng.data[sIdx];
+    bigRgba[dIdx + 1] = subQrPng.data[sIdx + 1];
+    bigRgba[dIdx + 2] = subQrPng.data[sIdx + 2];
+    bigRgba[dIdx + 3] = 255;
+  }
+}
+
+const offCenterResult = decodeBarcodePixels(bigRgba, bigWidth, bigHeight);
+assert(offCenterResult.success === true, "Off-center QR in large 1600x1200 frame decoded successfully");
+assert(offCenterResult.data === "https://freebiz.pk/phone-cam-photo-success", "Decoded data matches original");
+
+// 2. Contrast stretching logic test
+const mockImageData = {
+  data: new Uint8ClampedArray([
+    100, 100, 100, 255,  // low luminance min
+    130, 130, 130, 255,  // washed out
+    160, 160, 160, 255   // low luminance max (range = 60, washed out photo)
+  ])
+};
+const stretched = applyContrastStretching(mockImageData);
+assert(stretched.data[0] <= 10, "Minimum luminance stretched down towards 0");
+assert(stretched.data[8] >= 240, "Maximum luminance stretched up towards 255");
+
+// -------------------------------------------------------------
+// TEST SUITE 21: Direct PNG Save vs Share Separation
+// -------------------------------------------------------------
+console.log("\nTEST SUITE 21: Direct PNG Save vs Share Separation");
+
+// Verify savePngToNativeOrWeb exists and handles web & native
+const sampleDataUrl = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+const saveRes = await savePngToNativeOrWeb("freebiz-test.png", sampleDataUrl, null);
+assert(typeof saveRes === "object", "savePngToNativeOrWeb returns result object");
+assert(saveRes.success === true, "savePngToNativeOrWeb succeeds without error");
+assert(saveRes.message.includes("freebiz-test.png"), "Result message references filename");
+
+// -------------------------------------------------------------
+// TEST SUITE 22: Security & XSS Hardening for Decoded Barcode Content
+// -------------------------------------------------------------
+console.log("\nTEST SUITE 22: Security & XSS Hardening for Decoded Content");
+
+// Dangerous script payload inside barcode
+const maliciousScriptBarcode = '<script>document.cookie="stolen"</script>';
+const parsedMalicious = parseQrPayload(maliciousScriptBarcode, "CODE_128");
+assert(parsedMalicious.isSafeUrl === false, "Dangerous script barcode is not marked as safe URL");
+assert(parsedMalicious.safeUrl === null, "SafeUrl is strictly null for script payload");
+assert(parsedMalicious.raw === maliciousScriptBarcode, "Raw payload preserved faithfully without execution");
+
+// Dangerous URL schemes
+const javascriptUrl = "javascript:alert('pwned')";
+const parsedJsUrl = parseQrPayload(javascriptUrl);
+assert(parsedJsUrl.isSafeUrl === false, "javascript: scheme strictly blocked");
+assert(parsedJsUrl.safeUrl === null, "safeUrl is null for javascript: scheme");
+
+const dataUrlScheme = "data:text/html,<script>alert(1)</script>";
+const parsedDataUrl = parseQrPayload(dataUrlScheme);
+assert(parsedDataUrl.isSafeUrl === false, "data: scheme strictly blocked");
+assert(parsedDataUrl.safeUrl === null, "safeUrl is null for data: scheme");
+
+const fileUrlScheme = "file:///etc/passwd";
+const parsedFileUrl = parseQrPayload(fileUrlScheme);
+assert(parsedFileUrl.isSafeUrl === false, "file: scheme strictly blocked");
+assert(parsedFileUrl.safeUrl === null, "safeUrl is null for file: scheme");
+
+// Legitimate HTTPS URL
+const validHttps = "https://freebiz.pk/store";
+const parsedHttps = parseQrPayload(validHttps);
+assert(parsedHttps.isSafeUrl === true, "Valid HTTPS URL is marked as safe");
+assert(parsedHttps.safeUrl === validHttps, "Safe URL preserved");
+
+// -------------------------------------------------------------
 // SUMMARY & EXIT
 // -------------------------------------------------------------
 console.log("\n=======================================================");
@@ -631,3 +815,4 @@ if (failedCount > 0) {
 } else {
   process.exit(0);
 }
+

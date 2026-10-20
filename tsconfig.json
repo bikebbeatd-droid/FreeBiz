@@ -4,6 +4,7 @@
     "useDefineForClassFields": false,
     "module": "ESNext",
     "types": ["vite/client", "node"],
+    "jsx": "react-jsx",
     "lib": [
       "ES2022",
       "DOM",
@@ -24,6 +25,7 @@
   },
   "include": [
     "src/**/*",
-    "script.js"
+    "script.js",
+    "server.ts"
   ]
 }
